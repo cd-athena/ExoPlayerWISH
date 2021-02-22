@@ -678,7 +678,7 @@ public class PlayerActivity extends AppCompatActivity
         buf_summary.write("startup_phaseS: " + startup_duration/1000.0 + "\n");
         buf_summary.write("num_stall: " + num_stall + "\n");
         buf_summary.write("stall_durationS: " + stall_duration/1000.0 + "\n");
-        buf_summary.write("Yin_QoE: " + YinQoE);
+        buf_summary.write("Yin_QoE: " + YinQoE + "\n");
         buf_summary.write("File_name: " + currentTime + "\n");
 
         if (instantStallDuration.size() > 0) {

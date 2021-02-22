@@ -503,9 +503,12 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     }
 
     // Minh [Record parameters] - ADD - S
+//    boolean re_record_check = (implementedABR == ABR.SQUAD) ? (isLastChunkDuration0 && playbackPositionUs == 0) :
+//                      isLastChunkDuration0;
+    boolean re_record_check = isLastChunkDuration0;
 //    if (bufferedDurationUs == 0 || isLastChunkDuration0) {
 //    if (isLastChunkDuration0) { // before squad
-    if (isLastChunkDuration0 && playbackPositionUs == 0){ // 16after squad
+    if (re_record_check){ // 16after squad
       timestampMs.set(tmp, nowMs-first_timeStamp);
       selectedQualityIndex.set(tmp, length - newSelectedIndex);
       selectedQualityBitrateBitps.set(tmp, getFormat(newSelectedIndex).bitrate);
@@ -1021,12 +1024,32 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   void set_weights_v3() {
     set_omega();
     set_quality_function();
-
+    // This setup is for default WISH
     double R_max_Mbps = getFormat(0).bitrate/1000000.0;
     double R_o_Mbps = getFormat(0).bitrate/1000000.0; //0.5*(getFormat(0).bitrate/1000000.0 + getFormat(1).bitrate/1000000.0);
     double thrp_optimal = getFormat(0).bitrate/1000000.0;
     double last_quality_1_Mbps = getFormat(1).bitrate/1000000.0;
-    double optimal_delta_buffer_S = buffMax*(SAFE_BUFFER_RATIO-MIN_BUFFER_RATIO);//buffMax*(SAFE_BUFFER_RATIO-MIN_BUFFER_RATIO);
+    double optimal_delta_buffer_S = buffMax*(SAFE_BUFFER_RATIO-MIN_BUFFER_RATIO);
+
+    // This setup is for test user's need. Decrease optial delta (\xi) ==> increase gamma
+//    double R_max_Mbps = getFormat(0).bitrate/1000000.0;
+//    double R_o_Mbps = getFormat(0).bitrate/1000000.0; //0.5*(getFormat(0).bitrate/1000000.0 + getFormat(1).bitrate/1000000.0);
+//    double thrp_optimal = getFormat(0).bitrate/1000000.0;
+//    double last_quality_1_Mbps = getFormat(1).bitrate/1000000.0;
+//    double optimal_delta_buffer_S = buffMax*(0.5-MIN_BUFFER_RATIO);
+
+    // This setup is for test user's need. Increase optimal delta  (\xi)==> decrease gamma
+    optimal_delta_buffer_S = buffMax*(1-MIN_BUFFER_RATIO);
+
+    // This setup is for test user's need. Decrease last_quality_1_Mbps (\xi & Q) ==> increase gamma
+//    last_quality_1_Mbps = getFormat(Math.round(length/2)).bitrate/1000000.0;
+//    optimal_delta_buffer_S = buffMax*(1-MIN_BUFFER_RATIO);
+
+    // This setup is for test user's need. Increase last_quality_1_Mbps ( & Q) ==> decrease gamma
+//    last_quality_1_Mbps = getFormat(0).bitrate/1000000.0;
+
+    // This setup is for test user's need. Decrease last_quality_1_Mbps (\delta)==> increase gamma
+//    thrp_optimal = 0.5 * getFormat(0).bitrate/1000000.0;
 
     double temp_beta_alpha = optimal_delta_buffer_S/SD;
     double temp_a = 2.0*Math.exp(1+ last_quality_1_Mbps/R_max_Mbps-2.0*R_o_Mbps/R_max_Mbps);
