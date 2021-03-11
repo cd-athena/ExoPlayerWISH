@@ -606,7 +606,7 @@ public class PlayerActivity extends AppCompatActivity
       try {
         Writer buf_log = new OutputStreamWriter(new FileOutputStream(logFile), "UTF-8");
         Writer buf_summary = new OutputStreamWriter(new FileOutputStream(summaryFile), "UTF-8");
-        buf_log.write("Id\tTime[s]\tEstThroughput\tQualityIdx\tBitrate\tBuffer\tIsSREnabled\tBattery\n");
+        buf_log.write("Id,Time[s],EstThroughput,QualityIdx,Bitrate,Buffer,IsSREnabled,Battery\n");
         Log.i("Minh", "Id\tTime[s]\tEstThroughput\tQualityIdx\tBitrate\tBuffer\tIsSREnabled\tBattery\n");
 
         for (int i = 0; i < _length; i++) {
@@ -626,13 +626,13 @@ public class PlayerActivity extends AppCompatActivity
           }
 
           // record segment download statistic
-          String _string = String.valueOf(i+1) + "\t" +
-                           String.valueOf(timestamp.get(i)/1000) + "\t" +
-                           String.valueOf((float)estimatedThroughput.get(i)/1000) + "\t" +
-                           String.valueOf(selectedQualityIndex.get(i)) + "\t" +
-                           String.valueOf((float)selectedQualityBitrate.get(i)/1000) + "\t" +
-                           String.valueOf((float)bufferLevel.get(i)/1000000) + "\t" +
-                           String.valueOf(srFlag.get(i))  + "\t" +
+          String _string = String.valueOf(i+1) + "," +
+                           String.valueOf(timestamp.get(i)/1000) + "," +
+                           String.valueOf((float)estimatedThroughput.get(i)/1000) + "," +
+                           String.valueOf(selectedQualityIndex.get(i)) + "," +
+                           String.valueOf((float)selectedQualityBitrate.get(i)/1000) + "," +
+                           String.valueOf((float)bufferLevel.get(i)/1000000) + "," +
+                           String.valueOf(srFlag.get(i))  + "," +
                            String.valueOf(batteryLevel.get(i))  + "\n";
           Log.i("MINH", _string);
           buf_log.write(_string);
@@ -646,52 +646,52 @@ public class PlayerActivity extends AppCompatActivity
         YinQoE = getYinQoE(selectedQualityBitrate, stall_duration/1000.0, startup_duration/1000.0);
 
         buf_summary.write("Default parameters\n");
-        buf_summary.write("ABR [EXOPLAYER 0, SR 1, SARA 2, BBA 3, PENSIEVE 4]: " + AdaptiveTrackSelection.implementedABR + "\n");
-        buf_summary.write("Quality function []: " + AdaptiveTrackSelection.quality_config + "\n");
-        buf_summary.write("Video: " + AdaptiveTrackSelection.segment_url + "\n");
+        buf_summary.write("ABR," + AdaptiveTrackSelection.implementedABR + "\n");
+        buf_summary.write("Quality function," + AdaptiveTrackSelection.quality_config + "\n");
+        buf_summary.write("Video," + AdaptiveTrackSelection.segment_url + "\n");
         for (int i = 0; i < AdaptiveTrackSelection.qualityLevelList.size(); i ++){
-          buf_summary.write(" Quality " + (AdaptiveTrackSelection.qualityLevelList.size()-i) + ": " + AdaptiveTrackSelection.qualityLevelList.get(i) + "\n");
+          buf_summary.write(" Quality " + (AdaptiveTrackSelection.qualityLevelList.size()-i) + "," + AdaptiveTrackSelection.qualityLevelList.get(i) + "\n");
         }
-        buf_summary.write("* Buffer size [ms]: " + DefaultLoadControl.DEFAULT_MAX_BUFFER_MS + "\n");
-        buf_summary.write("* Buffer min [ms]: " + DefaultLoadControl.DEFAULT_MIN_BUFFER_MS + "\n");
-        buf_summary.write("* Buffer save level: " + AdaptiveTrackSelection.SAFE_BUFFER_RATIO + "\n");
-        buf_summary.write("* Buffer low level: " + AdaptiveTrackSelection.LOW_BUFFER_RATIO + "\n");
-        buf_summary.write("* Buffer min level: " + AdaptiveTrackSelection.MIN_BUFFER_RATIO + "\n");
-        buf_summary.write("* Buffer for playback to start/resume [ms]: " + DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS + "\n");
-        buf_summary.write("* Buffer for playback after stall [ms]: " + DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS + "\n");
-        buf_summary.write("* Network Type: " + AdaptiveTrackSelection.networkType + "\n");
-        buf_summary.write("alpha: " + AdaptiveTrackSelection.alpha + "\n");
-        buf_summary.write("beta: " + AdaptiveTrackSelection.beta + "\n");
-        buf_summary.write("gamma: " + AdaptiveTrackSelection.gamma + "\n");
-        buf_summary.write("margin: " + AdaptiveTrackSelection.margin + "\n");
-        buf_summary.write("LowBuffThreshold[ms]: " + AdaptiveTrackSelection.buffLowThresholdS*1000 + "\n");
+        buf_summary.write("* Buffer size [ms]," + DefaultLoadControl.DEFAULT_MAX_BUFFER_MS + "\n");
+        buf_summary.write("* Buffer min [ms]," + DefaultLoadControl.DEFAULT_MIN_BUFFER_MS + "\n");
+        buf_summary.write("* Buffer save level," + AdaptiveTrackSelection.SAFE_BUFFER_RATIO + "\n");
+        buf_summary.write("* Buffer low level," + AdaptiveTrackSelection.LOW_BUFFER_RATIO + "\n");
+        buf_summary.write("* Buffer min level," + AdaptiveTrackSelection.MIN_BUFFER_RATIO + "\n");
+        buf_summary.write("* Buffer for playback to start/resume [ms]," + DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS + "\n");
+        buf_summary.write("* Buffer for playback after stall [ms]," + DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS + "\n");
+        buf_summary.write("* Network Type," + AdaptiveTrackSelection.networkType + "\n");
+        buf_summary.write("alpha," + AdaptiveTrackSelection.alpha + "\n");
+        buf_summary.write("beta," + AdaptiveTrackSelection.beta + "\n");
+        buf_summary.write("gamma," + AdaptiveTrackSelection.gamma + "\n");
+        buf_summary.write("margin," + AdaptiveTrackSelection.margin + "\n");
+        buf_summary.write("LowBuffThreshold[ms]," + AdaptiveTrackSelection.buffLowThresholdS*1000 + "\n");
 
 
         buf_summary.write("******************************************\n");
-        buf_summary.write("Stream session from: " + AdaptiveTrackSelection.startTime + " to " +
+        buf_summary.write("Stream session from," + AdaptiveTrackSelection.startTime + " to " +
                               hour + "_" + minute + "_" + second + "\n");
-        buf_summary.write("avg_bitrate: " + avg_bitrate + "\n");
-        buf_summary.write("avg_throughput: " + avg_throughput + "\n");
-        buf_summary.write("avg_quality_idx: " + avg_quality_idx + "\n");
-        buf_summary.write("avg_video_instability: " + avg_video_instability + "\n");
-        buf_summary.write("num_downward_switches: " + num_downward_switches + "\n");
-        buf_summary.write("startup_phaseS: " + startup_duration/1000.0 + "\n");
-        buf_summary.write("num_stall: " + num_stall + "\n");
-        buf_summary.write("stall_durationS: " + stall_duration/1000.0 + "\n");
-        buf_summary.write("Yin_QoE: " + YinQoE + "\n");
-        buf_summary.write("File_name: " + currentTime + "\n");
+        buf_summary.write("avg_bitrate," + avg_bitrate + "\n");
+        buf_summary.write("avg_throughput," + avg_throughput + "\n");
+        buf_summary.write("avg_quality_idx," + avg_quality_idx + "\n");
+        buf_summary.write("avg_video_instability," + avg_video_instability + "\n");
+        buf_summary.write("num_downward_switches," + num_downward_switches + "\n");
+        buf_summary.write("startup_phaseS," + startup_duration/1000.0 + "\n");
+        buf_summary.write("num_stall," + num_stall + "\n");
+        buf_summary.write("stall_durationS," + stall_duration/1000.0 + "\n");
+        buf_summary.write("Yin_QoE," + YinQoE + "\n");
+        buf_summary.write("File_name," + currentTime + "\n");
 
         if (instantStallDuration.size() > 0) {
           buf_summary.write("************* Stall events ************\n");
-          buf_summary.write("StartStall\t StallDuration\n");
+          buf_summary.write("StartStall,StallDuration\n");
           for (int i = 0; i < instantStallDuration.size(); i++){
-            buf_summary.write((startStallTimestamps.get(i+1)-startStallTimestamps.get(0))/1000 + "\t " + instantStallDuration.get(i)/1000.0 + "\n");
+            buf_summary.write((startStallTimestamps.get(i+1)-startStallTimestamps.get(0))/1000 + "," + instantStallDuration.get(i)/1000.0 + "\n");
           }
         }
 
-        buf_summary.write("quality\tNo\n");
+        buf_summary.write("quality,No\n");
         for (int i = 0; i < quality_distribution.length; i++){
-          buf_summary.write(i+1 + "\t" + quality_distribution[i] + "\n");
+          buf_summary.write(i+1 + "," + quality_distribution[i] + "\n");
         }
         buf_summary.flush();
 
