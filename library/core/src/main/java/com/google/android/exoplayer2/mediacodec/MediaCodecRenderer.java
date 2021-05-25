@@ -1140,7 +1140,13 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
 
       TraceUtil.endSection();
       TraceUtil.beginSection("configureCodec");
+      // MINH [Get access to the downloaded segments/frames] - ADD - S
+      Log.i("Minh", "==> Start config codec");
+      // MINH [Get access to the downloaded segments/frames] - ADD - E
       configureCodec(codecInfo, codecAdapter, inputFormat, crypto, codecOperatingRate);
+      // MINH [Get access to the downloaded segments/frames] - ADD - S
+      Log.i("Minh", "==> End config codec");
+      // MINH [Get access to the downloaded segments/frames] - ADD - E
       TraceUtil.endSection();
       TraceUtil.beginSection("startCodec");
       codecAdapter.start();
@@ -1217,7 +1223,10 @@ public abstract class MediaCodecRenderer extends BaseRenderer {
 
   @Nullable
   private ByteBuffer getOutputBuffer(int outputIndex) {
+
     if (Util.SDK_INT >= 21) {
+//      MediaFormat bufferFormat = codec.getOutputFormat(outputIndex);
+//      Log.i("Minh", "[decoded frames]==> Get Output Buffer. Index: " + outputIndex);
       return codec.getOutputBuffer(outputIndex);
     } else {
       return outputBuffers[outputIndex];

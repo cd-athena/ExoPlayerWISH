@@ -421,21 +421,24 @@ public class DefaultDashChunkSource implements DashChunkSource {
   @Override
   public void onChunkLoadCompleted(Chunk chunk) {
     // MINH [Get some parameter] - ADD - S
-    segmentUrl = chunk.getUri();
-    double downloadTimeS = (Util.getNowUnixTimeMs(elapsedRealtimeOffsetMs) - start_download_timeMs)/1000.0;
-    if (downloadTimeS > (double)(AdaptiveTrackSelection.SD/10.0)) {
-      AdaptiveTrackSelection.last_dl_time = downloadTimeS;
+    String chunk_mime_type = chunk.trackFormat.containerMimeType.split("/")[0];
+
+    if (chunk_mime_type.equals("video")) {
+      segmentUrl = chunk.getUri();
+      double downloadTimeS = (Util.getNowUnixTimeMs(elapsedRealtimeOffsetMs) - start_download_timeMs)/1000.0;
+      if (downloadTimeS > (double)(AdaptiveTrackSelection.SD/10.0)) {
+        AdaptiveTrackSelection.last_dl_time = downloadTimeS;
+      }
+      AdaptiveTrackSelection.lastThroughputMbps = chunk.bytesLoaded()*8.0/(downloadTimeS*1000000);
+
+      if (chunk.getDurationUs()/1000000.0 != 0) {
+        AdaptiveTrackSelection.SD = chunk.getDurationUs()/1000000;
+      }
+
+      Log.i("MINH", "\t///// Complete downloading the chunk  bitrate [Mbps]: " + (float)chunk.trackFormat.bitrate/(1000000) +
+          "\ndownload time [s]: " + downloadTimeS + ". Thrp [Mbps]: " + AdaptiveTrackSelection.lastThroughputMbps +
+          "\t SD: " + AdaptiveTrackSelection.SD + "\tType: " + chunk.type + "\tformat: " + chunk.trackFormat.containerMimeType);
     }
-    AdaptiveTrackSelection.lastThroughputMbps = chunk.bytesLoaded()*8.0/(downloadTimeS*1000000);
-
-    if (chunk.trackFormat.containerMimeType.equals("video/mp4") && chunk.getDurationUs()/1000000.0 != 0) {
-      AdaptiveTrackSelection.SD = chunk.getDurationUs()/1000000;
-    }
-
-
-    Log.i("MINH", "\t///// Complete downloading the chunk  bitrate [Mbps]: " + (float)chunk.trackFormat.bitrate/(1000000) +
-                "\ndownload time [s]: " + downloadTimeS + ". Thrp [Mbps]: " + AdaptiveTrackSelection.lastThroughputMbps +
-                "\t SD: " + AdaptiveTrackSelection.SD + "\tType: " + chunk.type + "\tformat: " + chunk.trackFormat.containerMimeType);
     // MINH [Get some parameter] - ADD - E
     if (chunk instanceof InitializationChunk) {
       InitializationChunk initializationChunk = (InitializationChunk) chunk;

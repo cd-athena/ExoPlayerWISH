@@ -83,8 +83,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 
-//MINH [ADD a function that writs log file to the SD card] - ADD - S
-//MINH [ADD a function that writs log file to the SD card] - ADD - E
+//MINH [ADD a function that write log file to the SD card] - ADD - S
+//MINH [ADD a function that write log file to the SD card] - ADD - E
 
 /** An activity that plays media using {@link SimpleExoPlayer}. */
 public class PlayerActivity extends AppCompatActivity
@@ -129,10 +129,10 @@ public class PlayerActivity extends AppCompatActivity
   private boolean startAutoPlay;
   private int startWindow;
   private long startPosition;
-  //MINH [ADD a function that writs log file to the SD card] - ADD - S
+  //MINH [ADD a function that write log file to the SD card] - ADD - S
   private AdaptiveTrackSelection adaptiveTrackSelection;
   private PlaybackStats playbackStats;
-  //MINH [ADD a function that writs log file to the SD card] - ADD - E
+  //MINH [ADD a function that write log file to the SD card] - ADD - E
 
   // Fields used only for ad playback.
 
@@ -510,15 +510,15 @@ public class PlayerActivity extends AppCompatActivity
     @Override
     public void onPlaybackStateChanged(@Player.State int playbackState) {
       if (playbackState == Player.STATE_ENDED) {
-        //MINH [ADD a function that writs log file to the SD card] - ADD - S
+        //MINH [ADD a function that write log file to the SD card] - ADD - S
         writeLogFile();
-        //MINH [ADD a function that writs log file to the SD card] - ADD - E
+        //MINH [ADD a function that write log file to the SD card] - ADD - E
         showControls();
       }
       updateButtonVisibility();
     }
 
-    //MINH [ADD a function that writs log file to the SD card] - ADD - S
+    //MINH [ADD a function that write log file to the SD card] - ADD - S
     private double getYinQoE(List<Integer> qualityBitrate_bps, double stallDurationS, double startupDelayS) {
       double sigma_1 = 1;
       double sigma_2 = AdaptiveTrackSelection.maxBitrateKbps;
@@ -627,7 +627,7 @@ public class PlayerActivity extends AppCompatActivity
 
           // record segment download statistic
           String _string = String.valueOf(i+1) + "," +
-                           String.valueOf(timestamp.get(i)/1000) + "," +
+                           String.valueOf(timestamp.get(i)/1000.0) + "," +
                            String.valueOf((float)estimatedThroughput.get(i)/1000) + "," +
                            String.valueOf(selectedQualityIndex.get(i)) + "," +
                            String.valueOf((float)selectedQualityBitrate.get(i)/1000) + "," +
@@ -659,7 +659,7 @@ public class PlayerActivity extends AppCompatActivity
         buf_summary.write("* Buffer min level," + AdaptiveTrackSelection.MIN_BUFFER_RATIO + "\n");
         buf_summary.write("* Buffer for playback to start/resume [ms]," + DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS + "\n");
         buf_summary.write("* Buffer for playback after stall [ms]," + DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS + "\n");
-        buf_summary.write("* Network Type," + AdaptiveTrackSelection.networkType + "\n");
+        buf_summary.write("* xi delta, slice window" + AdaptiveTrackSelection.xi + ',' + AdaptiveTrackSelection.delta + ',' + AdaptiveTrackSelection.slice_window + "\n");
         buf_summary.write("alpha," + AdaptiveTrackSelection.alpha + "\n");
         buf_summary.write("beta," + AdaptiveTrackSelection.beta + "\n");
         buf_summary.write("gamma," + AdaptiveTrackSelection.gamma + "\n");

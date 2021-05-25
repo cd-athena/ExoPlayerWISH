@@ -226,7 +226,7 @@ public class DefaultTrackSelector extends MappingTrackSelector {
       setInitialValuesWithoutContext();
       selectionOverrides = new SparseArray<>();
       rendererDisabledFlags = new SparseBooleanArray();
-      setViewportSizeToPhysicalDisplaySize(context, /* viewportOrientationMayChange= */ true);
+      setViewportSizeToPhysicalDisplaySize(context, /* viewportOrientationMayChange= */ true); // Minh: default: true
     }
 
     /**
@@ -275,9 +275,15 @@ public class DefaultTrackSelector extends MappingTrackSelector {
      *
      * @return This builder.
      */
+    // Minh [allow 4K] MOD - S
+//    public ParametersBuilder setMaxVideoSizeSd() {
+//      return setMaxVideoSize(1279, 719);
+//    }
     public ParametersBuilder setMaxVideoSizeSd() {
-      return setMaxVideoSize(1279, 719);
+      Log.i("MaxResolution", "******************* setMaxvideoSize");
+      return setMaxVideoSize(3840, 2160);
     }
+    // Minh [allow 4K] MOD - E
 
     /**
      * Equivalent to {@link #setMaxVideoSize setMaxVideoSize(Integer.MAX_VALUE, Integer.MAX_VALUE)}.

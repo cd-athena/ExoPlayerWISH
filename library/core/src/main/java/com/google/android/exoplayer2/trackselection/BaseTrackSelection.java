@@ -24,6 +24,7 @@ import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.source.TrackGroup;
 import com.google.android.exoplayer2.source.chunk.MediaChunk;
 import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.Log;
 import com.google.android.exoplayer2.util.Util;
 import java.util.Arrays;
 import java.util.List;
@@ -65,6 +66,7 @@ public abstract class BaseTrackSelection implements TrackSelection {
     Assertions.checkState(tracks.length > 0);
     this.group = Assertions.checkNotNull(group);
     this.length = tracks.length;
+    Log.i("Minh", "Basetrackselection: length: " + this.length);
     // Set the formats, sorted in order of decreasing bandwidth.
     formats = new Format[length];
     for (int i = 0; i < tracks.length; i++) {

@@ -8,33 +8,28 @@
         "extension":"mpd"
       },
       {
-        "name": "Tears of Steel HEVC (sd=2s)",
-        "uri": "http://192.168.0.104/tearsofsteel_4k_hevc_2s/tearsofsteel_4k_hevc_2s.mpd",
-        "extension":"mpd"
-      },
-      {
-        "name": "Tears of Steel HEVC (sd=4s)",
+        "name": "Tears of Steel Ghent (sd=4s)-4K",
         "uri": "http://192.168.0.104/tearsofsteel_4k_hevc_4s/tearsofsteel_4k_hevc_4s.mpd",
         "extension":"mpd"
       },
       {
-        "name": "Tears of Steel HEVC (sd=6s)",
-        "uri": "http://192.168.0.104/tearsofsteel_4k_hevc_6s/tearsofsteel_4k_hevc_6s.mpd",
-        "extension":"mpd"
-      },
-      {
-        "name": "Tears of Steel HEVC (sd=10s)",
-        "uri": "http://192.168.0.104/tearsofsteel_4k_hevc_10s/tearsofsteel_4k_hevc_10s.mpd",
-        "extension":"mpd"
-      },
-      {
-        "name":"[4] Product Review - Cat Reaction [not available]",
-        "uri": "http://192.168.0.104/Product_review_catReacts/catReacts_4s_30fps_onDemand.mpd",
+        "name": "tos_5min_begin",
+        "uri": "http://192.168.0.104/tos_5min_4s/tos_5min_4s.mpd",
         "extension": "mpd"
       },
       {
-        "name": "[5] Big Buck Bunny [not available]",
-        "uri": "http://192.168.0.104/BBB_video/4sec/BigBuckBunny_4s_onDemand_2014_05_09.mpd",
+        "name": "tos_5min_end",
+        "uri": "http://192.168.0.104/tos_5min_end_4s/tos_5min_end_4s.mpd",
+        "extension": "mpd"
+      },
+      {
+        "name": "gamplay_MMSP",
+        "uri": "http://192.168.0.104/gameplay_5min_4s/gameplay_hevc_4s.mpd",
+        "extension": "mpd"
+      },
+      {
+        "name": "rally",
+        "uri": "http://192.168.0.104/rally_5min_4s/rally_hevc_4s.mpd",
         "extension": "mpd"
       },
       {

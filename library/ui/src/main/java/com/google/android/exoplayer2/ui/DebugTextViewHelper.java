@@ -137,9 +137,9 @@ public class DebugTextViewHelper implements Player.EventListener, Runnable {
         break;
     }
     return String.format(
-        "playWhenReady:%s playbackState:%s window:%s BUFFER: %s ABR: %s",
+        "playWhenReady:%s playbackState:%s window:%s BUFFER: %s ABR: %s THROUGHPUT: %s",
         player.getPlayWhenReady(), playbackStateString, player.getCurrentWindowIndex(), (player.getBufferedPosition() - player.getContentPosition())/1000,
-        AdaptiveTrackSelection.implementedABR);
+        AdaptiveTrackSelection.implementedABR, AdaptiveTrackSelection.lastThroughputMbps);
   }
 
   /** Returns a string containing video debugging information. */

@@ -233,6 +233,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     playbackInfo = PlaybackInfo.createDummy(emptyTrackSelectorResult);
     playbackInfoUpdate = new PlaybackInfoUpdate(playbackInfo);
     rendererCapabilities = new RendererCapabilities[renderers.length];
+    Log.i("maxresolution", "rederers.lenth: " + renderers.length);
     for (int i = 0; i < renderers.length; i++) {
       renderers[i].setIndex(i);
       rendererCapabilities[i] = renderers[i].getCapabilities();
@@ -1867,6 +1868,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
       }
       if (!renderer.isCurrentStreamFinal()) {
         // The renderer stream is not final, so we can replace the sample streams immediately.
+        Log.i("MaxResolution", "replaceStreamsOrDisableRendererForTransition" );
         Format[] formats = getFormats(newTrackSelectorResult.selections.get(i));
         renderer.replaceStream(
             formats,
@@ -2116,6 +2118,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     RendererConfiguration rendererConfiguration =
         trackSelectorResult.rendererConfigurations[rendererIndex];
     TrackSelection newSelection = trackSelectorResult.selections.get(rendererIndex);
+    Log.i("MaxResolution", "enableRenderer. rendererIndex = " + rendererIndex );
     Format[] formats = getFormats(newSelection);
     // The renderer needs enabling with its new track selection.
     boolean playing = shouldPlayWhenReady() && playbackInfo.playbackState == Player.STATE_READY;
@@ -2123,6 +2126,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     boolean joining = !wasRendererEnabled && playing;
     // Enable the renderer.
     enabledRendererCount++;
+    Log.i("MaxResolution", "enableRenderer length: " + formats.length);
     renderer.enable(
         rendererConfiguration,
         formats,
@@ -2592,6 +2596,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
   private static Format[] getFormats(TrackSelection newSelection) {
     // Build an array of formats contained by the selection.
     int length = newSelection != null ? newSelection.length() : 0;
+    Log.i("MaxResolution", "getFormats length: " + length);
     Format[] formats = new Format[length];
     for (int i = 0; i < length; i++) {
       formats[i] = newSelection.getFormat(i);

@@ -94,6 +94,10 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   private static final String KEY_CROP_BOTTOM = "crop-bottom";
   private static final String KEY_CROP_TOP = "crop-top";
 
+  // Minh [try to get video frame] - ADD - S
+  private static final String tag_m = "GetDecodedFrame";
+  // Minh [try to get video frame] - ADD - E
+
   // Long edge length in pixels for standard video formats, in decreasing in order.
   private static final int[] STANDARD_LONG_EDGE_VIDEO_PX = new int[] {
       1920, 1600, 1440, 1280, 960, 854, 640, 540, 480};
@@ -581,6 +585,8 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
       surface = dummySurface;
     }
     codecAdapter.configure(mediaFormat, surface, crypto, 0);
+
+
     if (Util.SDK_INT >= 23 && tunneling) {
       tunnelingOnFrameRenderedListener = new OnFrameRenderedListenerV23(codecAdapter.getCodec());
     }
@@ -655,9 +661,9 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   @CallSuper
   @Override
   protected void onQueueInputBuffer(DecoderInputBuffer buffer) throws ExoPlaybackException {
-    // MINH [Get access to the downloaded segments/frames] - MOD - S
-//    Log.i("MINH", "Decoder onQueueInputBuffer");
-    // MINH [Get access to the downloaded segments/frames] - MOD - E
+    // MINH [Get access to the downloaded segments/frames] - ADD - S
+//    Log.i(tag_m, "Decoder onQueueInputBuffer");
+    // MINH [Get access to the downloaded segments/frames] - ADD - E
     // In tunneling mode the device may do frame rate conversion, so in general we can't keep track
     // of the number of buffers in the codec.
     if (!tunneling) {
@@ -749,12 +755,12 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   @Override
   protected boolean processOutputBuffer(
       long positionUs,  // Minh: The current media time in microseconds, measured at the start of the current iteration of the rendering loop
-      long elapsedRealtimeUs,
+      long elapsedRealtimeUs, // The MediaCodecAdapter instance, or null in bypass mode were no codec is used.
       @Nullable MediaCodec codec,
       @Nullable ByteBuffer buffer,  // Minh: The output buffer to process
-      int bufferIndex,  // Minh: The index of the output buffer. Values are in range [0;4] ??
+      int bufferIndex,  // Minh: The index of the output buffer.
       int bufferFlags,  // Minh: The flags attached to the output buffer.
-      int sampleCount,
+      int sampleCount,  // The number of samples extracted from the sample queue in the buffer. This allows handling multiple samples as a batch for efficiency.
       long bufferPresentationTimeUs,  // Minh: The time this frame will be played
       boolean isDecodeOnlyBuffer,
       boolean isLastBuffer, // Minh: is it the last frame/data of the video in this stream?
@@ -763,7 +769,39 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     Assertions.checkNotNull(codec); // Can not render video without codec
 
     // MINH [Get access to the downloaded segments/frames] - MOD - S
-//    Log.i("MINH", "==============111====== Frame bufferPresentationTime[ms]: " + bufferPresentationTimeUs/1000);
+//    Log.i(tag_m, "=====111====== Buffer idx: " + bufferIndex  + " Frame bufferPresentationTime[ms]: " + bufferPresentationTimeUs/1000);
+    if (bufferPresentationTimeUs/1000 > 3500 &&
+        bufferPresentationTimeUs/1000 < 3600){
+
+      // save to file
+      /*String path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/MinhExoPlayerSR/";
+      Log.i(tag_m, "===> path: " + path); // Environment.getExternalStorageDirectory().getAbsolutePath() + "/MinhExoPlayerSR/"
+
+      Bitmap bitmap = Bitmap.createBitmap(format.width, format.height, Bitmap.Config.ARGB_8888);
+      Log.i(tag_m, "===> WIDTH: " + format.width + "\t HEIGHT: " + format.height);
+      Log.i(tag_m, "===> buffer size: " + buffer.);
+      buffer.rewind();
+      bitmap.copyPixelsFromBuffer(buffer);
+
+      File myDir = new File(path + "/saved_images");
+      myDir.mkdirs();
+
+      String fname = "Image-minh.jpg";
+      File file = new File (myDir, fname);
+      if (file.exists ()) file.delete ();
+      try {
+        FileOutputStream out = new FileOutputStream(file);
+        bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+        out.flush();
+        out.close();
+
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+
+       */
+    }
+
     // MINH [Get access to the downloaded segments/frames] - MOD - E
 
     if (initialPositionUs == C.TIME_UNSET) {
@@ -779,9 +817,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     }
 
     long earlyUs = bufferPresentationTimeUs - positionUs;
-    // MINH [Get access to the downloaded segments/frames] - MOD - S
-//    Log.i("MINH", "==============111====== Frame early[ms]: " + earlyUs/1000);
-    // MINH [Get access to the downloaded segments/frames] - MOD - E
+
     if (surface == dummySurface) {
       // Skip frames in sync with playback, so we'll be at the right frame if the mode changes.
       if (isBufferLate(earlyUs)) {
@@ -806,6 +842,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
             && (shouldRenderFirstFrame
                 || (isStarted && shouldForceRenderOutputBuffer(earlyUs, elapsedSinceLastRenderUs)));
     if (forceRenderOutputBuffer) {
+      Log.i(tag_m, "***** Abnormal ****** forceRenderOutputBuffer()");
       long releaseTimeNs = System.nanoTime();
       notifyFrameMetadataListener(presentationTimeUs, releaseTimeNs, format);
       if (Util.SDK_INT >= 21) {
@@ -852,9 +889,9 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
 
     if (Util.SDK_INT >= 21) {
       // Let the underlying framework time the release.
-      if (earlyUs < 50000) {  // Minh: default: 50_000. why?
+      if (earlyUs < 50000) {  // Minh: default: 50_000. why?. If we increase to e.g. 500_000ns, is it ok?
         // MINH [Get access to the downloaded segments/frames] - MOD - S
-//        Log.i("MINH", "///////////////////// Let's render");
+//        Log.i("MINH", "///////////////////// Let's render at earlyUS: " + earlyUs);
         // MINH [Get access to the downloaded segments/frames] - MOD - E
         notifyFrameMetadataListener(presentationTimeUs, adjustedReleaseTimeNs, format);
         renderOutputBufferV21(codec, bufferIndex, presentationTimeUs, adjustedReleaseTimeNs);
@@ -900,6 +937,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     maybeNotifyVideoSizeChanged();
     decoderCounters.renderedOutputBufferCount++;
     maybeNotifyRenderedFirstFrame();
+//    Log.i(tag_m, "* onProcessedTunneledBuffer()");
     onProcessedOutputBuffer(presentationTimeUs);
   }
 
@@ -911,6 +949,9 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   @CallSuper
   @Override
   protected void onProcessedOutputBuffer(long presentationTimeUs) {
+    // MINH [Get access to the downloaded segments/frames] - ADD - S
+//    Log.i(tag_m, "==> onProcessedOutputBuffer()");
+    // MINH [Get access to the downloaded segments/frames] - ADD - E
     super.onProcessedOutputBuffer(presentationTimeUs);
     if (!tunneling) {
       buffersInCodecCount--;
@@ -1001,6 +1042,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
    *
    * @param codec The codec that owns the output buffer.
    * @param index The index of the output buffer to drop.
+   * @param presentationTimeUs The presput buffer to drop.
    * @param presentationTimeUs The presentation time of the output buffer, in microseconds.
    * @param positionUs The current playback position, in microseconds.
    * @param treatDroppedBuffersAsSkipped Whether dropped buffers should be treated as intentionally
@@ -1091,6 +1133,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
   @RequiresApi(21)
   protected void renderOutputBufferV21(
       MediaCodec codec, int index, long presentationTimeUs, long releaseTimeNs) {
+
     maybeNotifyVideoSizeChanged();
     TraceUtil.beginSection("releaseOutputBuffer");
     codec.releaseOutputBuffer(index, releaseTimeNs);
@@ -1236,7 +1279,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     }
   }
 
-  private static boolean isBufferLate(long earlyUs) {
+  private static boolean isBufferLate(long earlyUs) { // Minh - should consider
     // Class a buffer as late if it should have been presented more than 30 ms ago.
     return earlyUs < -30000;
   }
@@ -1292,6 +1335,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     mediaFormat.setString(MediaFormat.KEY_MIME, codecMimeType);
     mediaFormat.setInteger(MediaFormat.KEY_WIDTH, format.width);
     mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, format.height);
+
     MediaFormatUtil.setCsdBuffers(mediaFormat, format.initializationData);
     // Set format parameters that may be unset.
     MediaFormatUtil.maybeSetFloat(mediaFormat, MediaFormat.KEY_FRAME_RATE, format.frameRate);
@@ -1342,6 +1386,7 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     int maxWidth = format.width;
     int maxHeight = format.height;
     int maxInputSize = getMaxInputSize(codecInfo, format);
+    Log.i("MaxResolution", "getCodecMaxValues: streamFormats.length: " + streamFormats.length);
     if (streamFormats.length == 1) {
       // The single entry in streamFormats must correspond to the format for which the codec is
       // being configured.
@@ -1362,12 +1407,14 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer {
     }
     boolean haveUnknownDimensions = false;
     for (Format streamFormat : streamFormats) {
+      Log.i("MaxResolution", "getCodecMaxValues: streamFormat.width: " + streamFormat.width + " streamFormat.height: " + streamFormat.height);
       if (codecInfo.isSeamlessAdaptationSupported(
           format, streamFormat, /* isNewFormatComplete= */ false)) {
         haveUnknownDimensions |=
             (streamFormat.width == Format.NO_VALUE || streamFormat.height == Format.NO_VALUE);
         maxWidth = max(maxWidth, streamFormat.width);
         maxHeight = max(maxHeight, streamFormat.height);
+        Log.i("MaxResolution", "maxWidth: " + maxWidth + " maxHeight: " + maxHeight);
         maxInputSize = max(maxInputSize, getMaxInputSize(codecInfo, streamFormat));
       }
     }
