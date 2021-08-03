@@ -432,7 +432,7 @@ public class DefaultDashChunkSource implements DashChunkSource {
       AdaptiveTrackSelection.lastThroughputMbps = chunk.bytesLoaded()*8.0/(downloadTimeS*1000000);
 
       if (chunk.getDurationUs()/1000000.0 != 0) {
-        AdaptiveTrackSelection.SD = chunk.getDurationUs()/1000000;
+        AdaptiveTrackSelection.SD = chunk.getDurationUs()/1000000.0;
       }
 
       Log.i("MINH", "\t///// Complete downloading the chunk  bitrate [Mbps]: " + (float)chunk.trackFormat.bitrate/(1000000) +

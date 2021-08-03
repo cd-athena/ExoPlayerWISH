@@ -21,7 +21,6 @@ import androidx.annotation.Nullable;
 import com.google.android.exoplayer2.decoder.DecoderInputBuffer;
 import com.google.android.exoplayer2.source.SampleStream;
 import com.google.android.exoplayer2.util.Assertions;
-import com.google.android.exoplayer2.util.Log;
 import com.google.android.exoplayer2.util.MediaClock;
 import java.io.IOException;
 
@@ -96,7 +95,6 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
     state = STATE_ENABLED;
     lastResetPositionUs = positionUs;
     onEnabled(joining, mayRenderStartOfStream);
-    Log.i("MaxResolution", "enable length: " + formats.length);
     replaceStream(formats, stream, startPositionUs, offsetUs);
     onPositionReset(positionUs, joining);
   }
@@ -116,7 +114,6 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
     this.stream = stream;
     readingPositionUs = offsetUs;
     streamFormats = formats;
-    Log.i("MaxResolution", "ReplaceStreamm length: " + streamFormats.length);
     streamOffsetUs = offsetUs;
     onStreamChanged(formats, startPositionUs, offsetUs);
   }
@@ -174,7 +171,6 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
     state = STATE_DISABLED;
     stream = null;
     streamFormats = null;
-    Log.i("MaxResolution", "disable length: " + streamFormats.length);
     streamIsFinal = false;
     onDisabled();
   }

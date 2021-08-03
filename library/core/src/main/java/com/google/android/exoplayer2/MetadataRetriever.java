@@ -135,6 +135,7 @@ public final class MetadataRetriever {
             }
             return true;
           case MESSAGE_CONTINUE_LOADING:
+
             checkNotNull(mediaPeriod).continueLoading(/* positionUs= */ 0);
             return true;
           case MESSAGE_RELEASE:

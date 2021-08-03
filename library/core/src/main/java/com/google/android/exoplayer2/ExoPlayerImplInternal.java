@@ -15,6 +15,7 @@
  */
 package com.google.android.exoplayer2;
 
+import static com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection.ABR.BOLA;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
@@ -38,6 +39,7 @@ import com.google.android.exoplayer2.source.MediaSource.MediaPeriodId;
 import com.google.android.exoplayer2.source.SampleStream;
 import com.google.android.exoplayer2.source.ShuffleOrder;
 import com.google.android.exoplayer2.source.TrackGroupArray;
+import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.TrackSelection;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectorResult;
@@ -233,7 +235,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
     playbackInfo = PlaybackInfo.createDummy(emptyTrackSelectorResult);
     playbackInfoUpdate = new PlaybackInfoUpdate(playbackInfo);
     rendererCapabilities = new RendererCapabilities[renderers.length];
-    Log.i("maxresolution", "rederers.lenth: " + renderers.length);
     for (int i = 0; i < renderers.length; i++) {
       renderers[i].setIndex(i);
       rendererCapabilities[i] = renderers[i].getCapabilities();
@@ -2024,6 +2025,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
             ? loadingPeriodHolder.toPeriodTime(rendererPositionUs)
             : loadingPeriodHolder.toPeriodTime(rendererPositionUs)
                 - loadingPeriodHolder.info.startPositionUs;
+    // Minh - Stop sending new request when the buffer is high for BOLA - ADD - S
+    if (AdaptiveTrackSelection.implementedABR == BOLA &&
+        bufferedDurationUs/1000000.0 > (AdaptiveTrackSelection.buffMax-AdaptiveTrackSelection.SD)) {
+      return false;
+    }
+      // Minh - Stop sending new request when the buffer is high for BOLA - ADD - E
+
     return loadControl.shouldContinueLoading(
         playbackPositionUs, bufferedDurationUs, mediaClock.getPlaybackParameters().speed);
   }

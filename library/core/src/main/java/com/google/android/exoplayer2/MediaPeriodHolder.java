@@ -213,6 +213,7 @@ import org.checkerframework.checker.nullness.compatqual.NullableType;
    * @param rendererPositionUs The load position in renderer time, in microseconds.
    */
   public void continueLoading(long rendererPositionUs) {
+    android.util.Log.i("MINH", "************************************************************** continueLoading 1");
     Assertions.checkState(isLoadingMediaPeriod());
     long loadingPeriodPositionUs = toPeriodTime(rendererPositionUs);
     mediaPeriod.continueLoading(loadingPeriodPositionUs);

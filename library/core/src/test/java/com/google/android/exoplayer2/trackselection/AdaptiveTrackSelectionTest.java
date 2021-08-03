@@ -98,7 +98,6 @@ public final class AdaptiveTrackSelectionTest {
         adaptiveTrackSelectionWithMinDurationForQualityIncreaseMs(
             trackGroup, /* minDurationForQualityIncreaseMs= */ 10_000);
 
-    Log.i("MINH", "AdaptiveTrackSelectionTest-1");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 9_999_000,
@@ -127,7 +126,6 @@ public final class AdaptiveTrackSelectionTest {
         adaptiveTrackSelectionWithMinDurationForQualityIncreaseMs(
             trackGroup, /* minDurationForQualityIncreaseMs= */ 10_000);
 
-    Log.i("MINH", "AdaptiveTrackSelectionTest-2");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 10_000_000,
@@ -156,7 +154,6 @@ public final class AdaptiveTrackSelectionTest {
         adaptiveTrackSelectionWithMaxDurationForQualityDecreaseMs(
             trackGroup, /* maxDurationForQualityDecreaseMs= */ 25_000);
 
-    Log.i("MINH", "AdaptiveTrackSelectionTest-3");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 25_000_000,
@@ -185,7 +182,6 @@ public final class AdaptiveTrackSelectionTest {
         adaptiveTrackSelectionWithMaxDurationForQualityDecreaseMs(
             trackGroup, /* maxDurationForQualityDecreaseMs= */ 25_000);
 
-    Log.i("MINH", "AdaptiveTrackSelectionTest-4");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 24_999_000,
@@ -338,7 +334,6 @@ public final class AdaptiveTrackSelectionTest {
             C.SELECTION_REASON_INITIAL);
     List<FakeMediaChunk> queue = ImmutableList.of(chunk1, chunk2);
     when(mockBandwidthMeter.getBitrateEstimate()).thenReturn(500L);
-    Log.i("MINH", "AdaptiveTrackSelectionTest-5");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 4_000_000,
@@ -353,7 +348,6 @@ public final class AdaptiveTrackSelectionTest {
     // decision. Switching up from the previous decision wouldn't be possible yet because the
     // buffered duration is less than minDurationForQualityIncreaseMs.
     when(mockBandwidthMeter.getBitrateEstimate()).thenReturn(1000L);
-    Log.i("MINH", "AdaptiveTrackSelectionTest-6");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 4_000_000,
@@ -377,7 +371,6 @@ public final class AdaptiveTrackSelectionTest {
         new FakeMediaChunk(unknownFormat, /* startTimeUs= */ 0, /* endTimeUs= */ 2_000_000);
     List<FakeMediaChunk> queue = ImmutableList.of(chunk);
 
-    Log.i("MINH", "AdaptiveTrackSelectionTest-7");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 2_000_000,
@@ -444,7 +437,6 @@ public final class AdaptiveTrackSelectionTest {
   private AdaptiveTrackSelection prepareTrackSelection(
       AdaptiveTrackSelection adaptiveTrackSelection) {
     adaptiveTrackSelection.enable();
-    Log.i("MINH", "AdaptiveTrackSelectionTest-8");
     adaptiveTrackSelection.updateSelectedTrack(
         /* playbackPositionUs= */ 0,
         /* bufferedDurationUs= */ 0,

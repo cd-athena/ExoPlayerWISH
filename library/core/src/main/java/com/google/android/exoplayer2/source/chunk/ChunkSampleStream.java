@@ -422,6 +422,9 @@ public class ChunkSampleStream<T extends ChunkSource> implements SampleStream, S
   @Override
   public void onLoadCompleted(Chunk loadable, long elapsedRealtimeMs, long loadDurationMs) {
     loadingChunk = null;
+    android.util.Log.i("MINH", "************************************************************** onLoadCompleted 1 START");
+    android.util.Log.i("MINH", "==> elapsedRealtimeMs: " + elapsedRealtimeMs);
+    android.util.Log.i("MINH", "==> loadDurationMs: " + loadDurationMs);
     chunkSource.onChunkLoadCompleted(loadable);
     LoadEventInfo loadEventInfo =
         new LoadEventInfo(
@@ -570,6 +573,7 @@ public class ChunkSampleStream<T extends ChunkSource> implements SampleStream, S
   @Override
   public boolean continueLoading(long positionUs) {
     if (loadingFinished || loader.isLoading() || loader.hasFatalError()) {
+      android.util.Log.i("MINH", "************************************************************** NO LOADING");
       return false;
     }
 

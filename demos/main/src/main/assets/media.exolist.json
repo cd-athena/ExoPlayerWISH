@@ -3,8 +3,23 @@
     "name": "YouTube DASH",
     "samples": [
       {
-        "name": "Tears of Steel == H264 == (sd=4s)",
-        "uri": "http://192.168.0.104/ToS_youtube/tos_dash.mpd",
+        "name": "ToS BEGIN == H265 == (SRABR)",
+        "uri": "http://192.168.0.104/tos_5min_begin_srabr/tos_5min_begin_srabr.mpd",
+        "extension":"mpd"
+      },
+      {
+        "name": "ToS END == H265 == (SRABR)",
+        "uri": "http://192.168.0.104/tos_5min_end_srabr/tos_5min_end_srabr.mpd",
+        "extension":"mpd"
+      },
+      {
+        "name": "Rally == H265 == (SRABR)",
+        "uri": "http://192.168.0.104/rally_5min_srabr/rally_5min_srbar/rally_5min_srbar.mpd",
+        "extension":"mpd"
+      },
+      {
+        "name": "GamePlay == H265 == (SRABR)",
+        "uri": "http://192.168.0.104/gameplay_5min_srabr/gameplay_5min_srabr.mpd",
         "extension":"mpd"
       },
       {
@@ -33,8 +48,18 @@
         "extension": "mpd"
       },
       {
-        "name":"BBB DASH IF ",
+        "name": "BBB DASH IF ",
         "uri": "https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd",
+        "extension": "mpd"
+      },
+      {
+        "name": "Test H264",
+        "uri": "http://192.168.31.157/tos1_h264/tos1_h264.mpd",
+        "extension": "mpd"
+      },
+      {
+        "name": "Test H265",
+        "uri": "http://192.168.31.123/rally_5min_srabr/rally_5min_srbar/rally_5min_srbar.mpd",
         "extension": "mpd"
       },
       {

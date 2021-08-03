@@ -550,7 +550,7 @@ public class PlayerActivity extends AppCompatActivity
       List<Long>    estimatedThroughput = new ArrayList<>();
       List<Long>    bufferLevel = AdaptiveTrackSelection.bufferLevelUs;
       List<Boolean> srFlag = AdaptiveTrackSelection.isSREnableList;
-      List<Integer> batteryLevel = AdaptiveTrackSelection.batteryLevellist;
+      List<Integer> batteryLevel = AdaptiveTrackSelection.batteryLevelList;
 
       int[] quality_distribution = new int[AdaptiveTrackSelection.num_of_quality];
       int   adaptive_thrp_size = AdaptiveTrackSelection.averageThroughputBitps.size();

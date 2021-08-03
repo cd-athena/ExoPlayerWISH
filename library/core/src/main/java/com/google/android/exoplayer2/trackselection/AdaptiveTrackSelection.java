@@ -56,16 +56,18 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   public static String startTime;
   // Minh - Get the time to download the first segment - ADD - E
   // Minh [Get battery info] - ADD - S
-  public static int batteryLevel = 100;
+  public static int batteryLevel;
   // Minh [Get battery info] - ADD - E
-  private final boolean isSREnable = false;
+  private boolean isRequestAgain = false;
   public static double lastThroughputMbps = 1;
   public static double last_dl_time = 0;
+  private static long last_segment_position_ms = 0;
 
   // Minh - Some constant value for SR ABR - ADD - S
   public static double alpha; //0.2; // for bandwidth cost
   public static double beta; //0.3;  // for buffer cost
   public static double gamma; //0.5;
+  public static double sigma;
   public static double xi;
   public static int    slice_window = 10;
   public static double delta;
@@ -81,13 +83,14 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   public static int          optimal_last_idx = 0;
   public static int           num_of_quality = 0;
   public static double        maxBitrateKbps = 0;
-  public static String segment_url = "";
+  public static String        segment_url = "";
   public static List<Double>  qualityLevelList = new ArrayList<>();
+  public static boolean       isLastChunkDuration0 = false;
+  public static int           lastQualityIndex = 0;
 
-  private static int          lastQualityIndex = 0;
   private static double       smoothThroughputMbps = 0;
   private static double       denominator_exp = 1;
-  private boolean[]           srFlag = new boolean[length];
+  public  static boolean[]    srFlag = new boolean[15];
   private double  saraEstimatedThroughputbps = 0;
   private double  estimatedThroghputMbps = 0;
   private double  maxThroughputMbps = 0;
@@ -97,12 +100,12 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   private static List<Double> saraLastThroughputMbpsList = new ArrayList<>();
 
   /*
-  * SR_1, SR_2, WISH, SR_4: draft versions and not used anymore
-  * WISH_NOSSDAV: final WISH ABR
-  * WISH_SR: WISH integrated with Super Resolution
-  * */
-  enum ABR {
-    EXOPLAYER, SARA, BBA, PENSIEVE, BOLA, ELASTIC, FASTMPC, SQUAD, WISH_NOSSDAV, WISH_SR, WISH_NOSSDAV_xi1, WISH_NOSSDAV_xi06, WISH_NOSSDAV_xi04, WISH_NOSSDAV_delta08, WISH_NOSSDAV_delta05
+   * SR_1, SR_2, WISH, SR_4: draft versions and not used anymore
+   * WISH_NOSSDAV: final WISH ABR
+   * WISH_SR: WISH integrated with Super Resolution
+   * */
+  public enum ABR {
+    TEST, EXOPLAYER, SARA, BBA, PENSIEVE, BOLA, PANDA, FESTIVE, ELASTIC, FASTMPC, SQUAD, WISH_NOSSDAV, WISH_SR, WISH_NOSSDAV_xi1, WISH_NOSSDAV_xi06, WISH_NOSSDAV_xi04, WISH_NOSSDAV_delta08, WISH_NOSSDAV_delta05
   }
   enum QUALITY_CONFIG{
     LINEAR, BITRATE_BASED
@@ -301,7 +304,10 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   public  static List<Long> averageThroughputBitps = new ArrayList<>();
   public  static List<Long> bufferLevelUs = new ArrayList<>();
   public  static List<Boolean> isSREnableList = new ArrayList<>();
-  public static List<Integer> batteryLevellist = new ArrayList<>();
+  public  static List<Integer> batteryLevelList = new ArrayList<>();
+  public  static List<Long> segmentStartTime = new ArrayList<>();
+  public  static List<Long> sr_start_content_position_ms = new ArrayList<>();
+  public  static List<Long> sr_corresponding_durtion_ms = new ArrayList<>();
   // Minh [Create some evaluation parameters] - ADD - E
 
   private final BandwidthProvider bandwidthProvider;
@@ -312,7 +318,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   private final Clock clock;
 
   private float playbackSpeed;
-  private int selectedIndex;
+  private int selectedIndex = 0;
   private int reason;
   private long lastBufferEvaluationMs;
   @Nullable private MediaChunk lastBufferEvaluationMediaChunk;
@@ -446,8 +452,10 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       MediaChunkIterator[] mediaChunkIterators) {
     long nowMs = clock.elapsedRealtime();
 
-    Log.i("MINH", "******************************* current buffer: " + bufferedDurationUs);
-    Log.i("MINH", "******************************* Playback Pos.: " + playbackPositionUs);
+    Log.i("MINH", "******************************* current buffer: " + bufferedDurationUs/1000);
+    Log.i("MINH", "******************************* Playback Pos.: " + playbackPositionUs/1000);
+    long considering_segment_position_ms = (bufferedDurationUs + playbackPositionUs)/1000;
+    Log.i("MINH", "Selecting Segment from " + considering_segment_position_ms);
 
     // Make initial selection
     if (reason == C.SELECTION_REASON_UNKNOWN) {
@@ -460,19 +468,27 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       Log.i("MINH", "****** Initial selectedIndex: " + (length-selectedIndex) + " at time " + nowMs);
       first_timeStamp = nowMs;
 
-//      timestampMs.add(nowMs);
-//      selectedQualityIndex.add(length - selectedIndex);
-//      selectedQualityBitrateBitps.add(getFormat(selectedIndex).bitrate);
-//      averageThroughputBitps.add(bandwidthProvider.getAllocatedBandwidth());
-////      averageThroughputBitps.add ((long)(estimatedThroghputMbps*1000000.0));
-//      bufferLevelUs.add(bufferedDurationUs);
-//      isSREnableList.add(false);
-//      batteryLevellist.add(batteryLevel);
+      timestampMs.add(nowMs-first_timeStamp);
+      selectedQualityIndex.add(length - selectedIndex);
+      selectedQualityBitrateBitps.add(getFormat(selectedIndex).bitrate);
+      averageThroughputBitps.add(bandwidthProvider.getAllocatedBandwidth());
+      bufferLevelUs.add(bufferedDurationUs);
+      isSREnableList.add(srFlag[selectedIndex]);
+      batteryLevelList.add(batteryLevel);
+      segmentStartTime.add(last_segment_position_ms);
+
+      if (srFlag[selectedIndex]) {
+        Log.i("MINH", "=========> OREKA. First segments" +
+            "\t qualityIdx: " + selectedIndex);
+        sr_start_content_position_ms.add(considering_segment_position_ms);
+      }
+
+      last_segment_position_ms = (bufferedDurationUs + playbackPositionUs)/1000;
 
       Calendar calendar = Calendar.getInstance();
       startTime   = String.format("%02d", calendar.get(Calendar.HOUR_OF_DAY)) + "_" +
-                    String.format("%02d", calendar.get(Calendar.MINUTE))+ "_" +
-                    String.format("%02d", calendar.get(Calendar.SECOND));
+          String.format("%02d", calendar.get(Calendar.MINUTE))+ "_" +
+          String.format("%02d", calendar.get(Calendar.SECOND));
       return;
     }
     int previousSelectedIndex = selectedIndex;
@@ -485,14 +501,13 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     }
 
     // MINH [Use SR ABR]- MOD - S
+    // delete the last recorded if it is requesting for the last segment
+
+    isRequestAgain = (last_segment_position_ms == considering_segment_position_ms) ? true : false;
     int newSelectedIndex = 0;
+
     newSelectedIndex = get_chosen_quality_index(implementedABR, nowMs, bufferedDurationUs, playbackPositionUs);
 
-    Log.i("MINH", "\tABR selected Idx " + (length - newSelectedIndex) + " Max idx " + length +
-              " for seg. " + selectedQualityIndex.size() +
-              " bitrate " + getFormat(newSelectedIndex).bitrate/1000000.0 +
-              " Buffer " + bufferedDurationUs/1000000.0 +
-              " Thrp " + bandwidthProvider.getAllocatedBandwidth()/1000000.0 + " Mbps. Max Thrp: " + maxThroughputMbps);
     if (!queue.isEmpty() && segment_url == "") {
       get_video_name(queue.get(0).getUri().getSchemeSpecificPart());
     }
@@ -502,51 +517,68 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     reason =
         newSelectedIndex == previousSelectedIndex ? previousReason : C.SELECTION_REASON_ADAPTIVE;
 
-    boolean isLastChunkDuration0 = false;
+
     int tmp = timestampMs.size()-1;
     if (queue.size() > 0) {
       Chunk lastChunk = queue.get(queue.size() - 1);
       if (lastChunk.trackFormat.bitrate != selectedQualityBitrateBitps.get(tmp)) {
         isLastChunkDuration0 = true;
       }
+      else {
+        isLastChunkDuration0 = false;
+      }
     }
 
     // Minh [Record parameters] - ADD - S
-//    boolean re_record_check = (implementedABR == ABR.SQUAD) ? (isLastChunkDuration0 && playbackPositionUs == 0) :
-//                      isLastChunkDuration0;
-    boolean re_record_check = isLastChunkDuration0;
-//    if (bufferedDurationUs == 0 || isLastChunkDuration0) {
-//    if (isLastChunkDuration0) { // before squad
-    if (re_record_check){ // 16after squad
+    if (isLastChunkDuration0 || isRequestAgain){
+      Log.e("Minh", "***************** REQEST AGAIN || LAST CHUNK DURATION IS 0 + " + (isLastChunkDuration0));
       timestampMs.set(tmp, nowMs-first_timeStamp);
       selectedQualityIndex.set(tmp, length - newSelectedIndex);
       selectedQualityBitrateBitps.set(tmp, getFormat(newSelectedIndex).bitrate);
       averageThroughputBitps.set(tmp, bandwidthProvider.getAllocatedBandwidth());
-//      averageThroughputBitps.set(tmp, (long)(estimatedThroghputMbps*1000000.0));
       bufferLevelUs.set(tmp, bufferedDurationUs);
       isSREnableList.set(tmp, srFlag[newSelectedIndex]);
-      batteryLevellist.set(tmp, batteryLevel);
+      batteryLevelList.set(tmp, batteryLevel);
+      segmentStartTime.set(tmp, last_segment_position_ms);
+
+      if (srFlag[newSelectedIndex]) {
+        sr_start_content_position_ms.set(sr_start_content_position_ms.size()-1, considering_segment_position_ms);
+      }
     }
     else {
       timestampMs.add(nowMs-first_timeStamp);
       selectedQualityIndex.add(length - newSelectedIndex);
       selectedQualityBitrateBitps.add(getFormat(newSelectedIndex).bitrate);
       averageThroughputBitps.add(bandwidthProvider.getAllocatedBandwidth());
-//      averageThroughputBitps.add((long)(estimatedThroghputMbps*1000000.0));
       bufferLevelUs.add(bufferedDurationUs);
       isSREnableList.add(srFlag[newSelectedIndex]);
-      batteryLevellist.add(batteryLevel);
+      batteryLevelList.add(batteryLevel);
+      segmentStartTime.add(last_segment_position_ms);
+
+      if (srFlag[newSelectedIndex]) {
+        Log.i("MINH", "=========> OREKA. new SR segment with consider playback time: " + considering_segment_position_ms +
+            "\t qualityIdx: " + newSelectedIndex);
+        sr_start_content_position_ms.add(considering_segment_position_ms);
+      }
     }
     // Minh [Record parameters] - ADD - E
 
+    Log.i("MINH", "\tABR selected Idx " + (length - newSelectedIndex) +
+        " for seg. " + selectedQualityIndex.size() +
+        " bitrate " + getFormat(newSelectedIndex).bitrate/1000000.0 +
+        " Buffer " + bufferedDurationUs/1000000.0 +
+        " Thrp " + bandwidthProvider.getAllocatedBandwidth()/1000000.0 + " Mbps. SR: " + srFlag[newSelectedIndex]);
     selectedIndex = newSelectedIndex;
     lastQualityIndex = newSelectedIndex;
+    last_segment_position_ms = (bufferedDurationUs + playbackPositionUs)/1000;
   }
 
   @Override
   public int getSelectedIndex() {
     return selectedIndex;
   }
+
+  public static int getLastQualityIndex(){ return lastQualityIndex;}
 
   @Override
   public int getSelectionReason() {
@@ -657,17 +689,32 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
    */
   private int determineIdealSelectedIndex(long nowMs) {
     long effectiveBitrate = bandwidthProvider.getAllocatedBandwidth();
+    Log.i("Minh", "Length = " + length);
     int lowestBitrateAllowedIndex = 0;
     for (int i = 0; i < length; i++) {
       if (nowMs == Long.MIN_VALUE || !isBlacklisted(i, nowMs)) {
         Format format = getFormat(i);
         if (canSelectFormat(format, format.bitrate, playbackSpeed, effectiveBitrate)) { //throughput-based
-            return  i;
+          return  i;
         } else {
           lowestBitrateAllowedIndex = i;
         }
       }
     }
+
+    return lowestBitrateAllowedIndex;
+  }
+
+  private int testABR() {
+    int lowestBitrateAllowedIndex = 0;
+    for (int i = 0; i < length; i++) {
+      Format format = getFormat(i);
+      if (format.height <= 270) { //throughput-based
+        return i;
+      }
+    }
+//    Log.e("MINH", "testABR: selected index: " + selectedIndex) ;
+//    lowestBitrateAllowedIndex = (selectedIndex < length-1) ? selectedIndex + 1 : 0;
 
     return lowestBitrateAllowedIndex;
   }
@@ -692,13 +739,17 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     averageThroughputBitps.clear();
     bufferLevelUs.clear();
     isSREnableList.clear();
-    batteryLevellist.clear();
+    batteryLevelList.clear();
+    segmentStartTime.clear();
   }
   private int get_chosen_quality_index(ABR m_implementedABR, long nowMs, long bufferedDurationUs, long playbackPositionUs){
     int chosen_quality_index = 0;
     lastThroughputMbps = Math.max(lastThroughputMbps, bandwidthProvider.getAllocatedBandwidth()/1000000.0);
     Log.i("Minh", "===> Minh last thrp: " + lastThroughputMbps +  ". default: " + bandwidthProvider.getAllocatedBandwidth()/1000000.0);
     switch (m_implementedABR){
+      case TEST:
+        chosen_quality_index = testABR();
+        break;
       case EXOPLAYER:
         chosen_quality_index = determineIdealSelectedIndex(nowMs);
         break;
@@ -723,7 +774,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         chosen_quality_index = WISH_ABR_NOSSDAV(nowMs, bufferedDurationUs, playbackPositionUs);
         break;
       case WISH_SR:
-        set_weights_v3(0.8, 1); // TODO: update it
+        set_weights_sr(0.8, 1); // TODO: update it
         chosen_quality_index = WISH_SR_ABR(nowMs, bufferedDurationUs, playbackPositionUs);
         break;
       case SARA:
@@ -748,7 +799,15 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         break;
       case SQUAD:
         chosen_quality_index = SQUAD_ABR(nowMs, bufferedDurationUs);
-//        SQUAD_get_spectrum((double)getFormat(lastQualityIndex).bitrate/1000000.0, (double)getFormat(chosen_quality_index).bitrate/1000000.0);
+        break;
+      case BOLA:
+        chosen_quality_index = BOLA_ABR(nowMs, (double)bufferedDurationUs/1000000.0);
+        break;
+      case PANDA:
+        chosen_quality_index = PANDA_ABR(nowMs, (double)bufferedDurationUs/1000000.0);
+        break;
+      case FESTIVE:
+        chosen_quality_index = FESTIVE_ABR(nowMs, (double)bufferedDurationUs/1000000.0);
         break;
       default:
         chosen_quality_index = determineIdealSelectedIndex(nowMs);
@@ -762,7 +821,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 //    double last_thrp = (double) bandwidthProvider.getAllocatedBandwidth()/1000000;
 //    smoothThroughputMbps = (smoothThroughputMbps == 0) ? lastThroughputMbps : (1 - margin) * smoothThroughputMbps + margin* lastThroughputMbps;
     smoothThroughputMbps = (smoothThroughputMbps == 0) ? bandwidthProvider.getAllocatedBandwidth()/1000000.0 :
-                            (1 - margin) * smoothThroughputMbps + margin* bandwidthProvider.getAllocatedBandwidth()/1000000.0;
+        (1 - margin) * smoothThroughputMbps + margin* bandwidthProvider.getAllocatedBandwidth()/1000000.0;
     return smoothThroughputMbps;
   }
 
@@ -816,25 +875,35 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     double last_quality_1_Mbps = getFormat(1).bitrate/1000000.0;
     double optimal_delta_buffer_S = buffMax*(m_xi-MIN_BUFFER_RATIO);
 
-    // This setup is for test user's need. Decrease optial delta (\xi) ==> increase gamma
-//    double R_max_Mbps = getFormat(0).bitrate/1000000.0;
-//    double R_o_Mbps = getFormat(0).bitrate/1000000.0; //0.5*(getFormat(0).bitrate/1000000.0 + getFormat(1).bitrate/1000000.0);
-//    double thrp_optimal = getFormat(0).bitrate/1000000.0;
-//    double last_quality_1_Mbps = getFormat(1).bitrate/1000000.0;
-//    double optimal_delta_buffer_S = buffMax*(0.5-MIN_BUFFER_RATIO);
+    double temp_beta_alpha = optimal_delta_buffer_S/SD;
+    double temp_a = 2.0*Math.exp(1+ last_quality_1_Mbps/R_max_Mbps-2.0*R_o_Mbps/R_max_Mbps);
+    double temp_b = (1 + temp_beta_alpha*SD/(optimal_delta_buffer_S))/thrp_optimal;
 
-    // This setup is for test user's need. Increase optimal delta  (\xi)==> decrease gamma
-//    optimal_delta_buffer_S = buffMax*(1-MIN_BUFFER_RATIO);
+    denominator_exp = Math.exp(2*qualityLevelList.get(0)-2*qualityLevelList.get(length-1));
+    alpha = 1.0/(1 + temp_beta_alpha + R_max_Mbps*temp_b*denominator_exp/temp_a);
+    beta = temp_beta_alpha*alpha;
+    gamma = 1 - alpha - beta;
 
-    // This setup is for test user's need. Decrease last_quality_1_Mbps (\xi & Q) ==> increase gamma
-//    last_quality_1_Mbps = getFormat(Math.round(length/2)).bitrate/1000000.0;
-//    optimal_delta_buffer_S = buffMax*(1-MIN_BUFFER_RATIO);
+    Log.i("Minh", "WEIGHT_3 for segment: " + timestampMs.size() + ": alpha: " + alpha + ". beta: " + beta + ". gamma: " + gamma);
+  }
 
-    // This setup is for test user's need. Increase last_quality_1_Mbps ( & Q) ==> decrease gamma
-//    last_quality_1_Mbps = getFormat(0).bitrate/1000000.0;
+  void set_weights_sr(double m_xi, double m_delta) {
+    xi = m_xi;
+    delta = m_delta;
+    if (timestampMs.size() != 0) {
+      Log.i("Minh", "WEIGHT_3: weights are calculated");
+      return;
+    }
 
-    // This setup is for test user's need. Decrease last_quality_1_Mbps (\delta)==> increase gamma
-//    thrp_optimal = 0.5 * getFormat(0).bitrate/1000000.0;
+    set_omega();
+    set_quality_function();
+    // This setup is for default WISH
+    /*
+    double R_max_Mbps = getFormat(0).bitrate/1000000.0;
+    double R_o_Mbps = getFormat(0).bitrate/1000000.0; //0.5*(getFormat(0).bitrate/1000000.0 + getFormat(1).bitrate/1000000.0);
+    double thrp_optimal = m_delta * getFormat(0).bitrate/1000000.0;
+    double last_quality_1_Mbps = getFormat(1).bitrate/1000000.0;
+    double optimal_delta_buffer_S = buffMax*(m_xi-MIN_BUFFER_RATIO);
 
     double temp_beta_alpha = optimal_delta_buffer_S/SD;
     double temp_a = 2.0*Math.exp(1+ last_quality_1_Mbps/R_max_Mbps-2.0*R_o_Mbps/R_max_Mbps);
@@ -844,6 +913,13 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     alpha = 1.0/(1 + temp_beta_alpha + R_max_Mbps*temp_b*denominator_exp/temp_a);
     beta = temp_beta_alpha*alpha;
     gamma = 1 - alpha - beta;
+
+     */
+    // for WISH-ABR_Wimob
+    alpha = 1;
+    beta = 2;
+    gamma = 7;
+    sigma = alpha;
 
     Log.i("Minh", "WEIGHT_3 for segment: " + timestampMs.size() + ": alpha: " + alpha + ". beta: " + beta + ". gamma: " + gamma);
   }
@@ -888,7 +964,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     return totalCost;
   }
 
-  double getTotalCost_SR(int qualityIndex, double estimatedThroughputMbps, double currentbufferS, int target_video_width) {
+  double getTotalCost_SR(int qualityIndex, double estimatedThroughputMbps, double currentbufferS) {
     double totalCost;
     double bandwidthCost;
     double bufferCost;
@@ -903,31 +979,22 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     int num_downloaded_segments = averageThroughputBitps.size();
     int quality_window = Math.min(10, num_downloaded_segments);
 
-    double[] powerArray = new double[length];
-    double[] sr_margin = new double[length];
+    int target_width = 1920;
+    int target_height = 1080;
+
     double current_quality_level = qualityLevelList.get(qualityIndex);
 
     Format segmentFormat = getFormat(qualityIndex);
-    int quality_width = segmentFormat.width;
-    int upscale_parameter = target_video_width/quality_width; // TODO: always upscale a segment to the target resolution. In the 2nd version, we can consider smaller upscales
-    Log.i("Minh", "==> Segment Resolution.width: " + quality_width +
-        ". target_video_width: " + target_video_width + ". Upscale: " + upscale_parameter);
+    double quality_improvementSR = getQualityImprovementSR(segmentFormat.height, 1080);
+    double current_quality_level_sr = (1 + quality_improvementSR)*qualityLevelList.get(qualityIndex);  // TODO: dummy quality of current level after SR
 
-    for (int i = 0; i < length; i++) {
-      powerArray[i] = (quality_width == target_video_width) ? 0 : quality_width*1.0/target_video_width;
-      sr_margin[i] = 1 - 0.2/length*i;  // TODO: dummy margin of results of SR compared to target resolution. SR_quality = margin * Target_quality
-    }
-    double current_quality_level_sr = sr_margin[qualityIndex]*qualityLevelList.get(0);  // TODO: dummy quality of current level after SR
-
-
-
-    for (int i = 1; i <= quality_window; i++){
+    for (int i = 1; i <= quality_window; i++){  // calculate the quality of the last segments.
       int segment_idx = num_downloaded_segments-i;
       int quality_exo_idx = length - selectedQualityIndex.get(segment_idx);
       if (!isSREnableList.get(segment_idx))
         average_quality += qualityLevelList.get(quality_exo_idx);
       else
-        average_quality += sr_margin[quality_exo_idx] * qualityLevelList.get(quality_exo_idx);
+        average_quality += (1+ getQualityImprovementSR(getFormat(quality_exo_idx).height, 1080)) * qualityLevelList.get(quality_exo_idx);
     }
     average_quality = average_quality*1.0/quality_window;
     Log.i("Minh", "average quality: " + average_quality);
@@ -936,18 +1003,18 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     bufferCost = bandwidthCost*(SD*1.0/(currentbufferS - bufferThreshold));
     qualityCost_cn = Math.exp(qualityLevelList.get(0) + average_quality - 2*current_quality_level)/denominator_exp;   // TODO: need updated
     qualityCost_sr = Math.exp(qualityLevelList.get(0) + average_quality - 2*current_quality_level_sr)/denominator_exp; // TODO: need updated
-    powerCost = powerArray[qualityIndex];
+    powerCost = segmentFormat.width * segmentFormat.height * 100.0 / (target_width*target_height*batteryLevel);
 
-    double gamma_sr = 0.5*gamma;
-    double gamma_cn = 0.5*gamma;
-    double delta = 1;
-    alpha = beta = gamma = 1;
 
     conventional_cost = alpha*bandwidthCost + beta*bufferCost + gamma*qualityCost_cn;
-    sr_cost = alpha*bandwidthCost + beta*bufferCost + gamma*qualityCost_sr + delta*powerCost;
+    sr_cost           = alpha*bandwidthCost + beta*bufferCost + gamma*qualityCost_sr + sigma*powerCost;
 
-    if ((int)(conventional_cost*100) < (int)(sr_cost*100) ||
-          upscale_parameter == 1) {
+    Log.i("MInh", "=====> powerCost: " + powerCost +
+        "\t QualityCost_Cn: " + qualityCost_cn +
+        "\t Qualitycost_SR: " + qualityCost_sr);
+
+    if (conventional_cost <= sr_cost ||
+        segmentFormat.height == target_height) {
       totalCost = conventional_cost;
       srFlag[qualityIndex] = false;
     }
@@ -966,21 +1033,78 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     return totalCost;
   }
 
+  private double getQualityImprovementSR(int source_hight, int target_hight) {
+    int upscale_factor = target_hight/source_hight;
+    double quality_improvementSR = 0;
+    if (upscale_factor == 2) {
+      quality_improvementSR = 0.081;
+    } else if (upscale_factor == 3) {
+      quality_improvementSR = 0.091;
+    }
+    else if (upscale_factor == 4){
+      quality_improvementSR = 0.099;
+    }
+//    Log.i("Minh", "********* Upscale factor: " + upscale_factor);
+    return quality_improvementSR;
+  }
+
+
+  private int WISH_SR_ABR(long nowMs, long currentBufferUs, long playbackPositionUs) {
+    double smooth_thrpMbps = get_smooth_throughput(0.125);
+    estimatedThroghputMbps = Math.min(smooth_thrpMbps, bandwidthProvider.getAllocatedBandwidth()/1000000.0);
+    int num_downloaded_segments = averageThroughputBitps.size();
+
+    Log.i("MINH", " -- ++ " + num_downloaded_segments +
+        " ++ -- EstThrp: " + estimatedThroghputMbps + "Mbps. Buffer[s] " + currentBufferUs/1000000.0 + " Smooth thrp: " + smooth_thrpMbps + "\n");
+
+    int selectedBitrate = length-1;
+    int lowestCost = Integer.MAX_VALUE;
+
+    if (currentBufferUs <= buffLowThresholdS*1000000) {
+      last_segment_position_ms = (currentBufferUs + playbackPositionUs)/1000;
+      Log.i("MINH", "Return from rebuffersing. Segment from " + last_segment_position_ms);
+      srFlag[length-1] = true;
+      return length-1;
+    }
+
+    int max_quality = length-1;
+
+    for (int i = 0; i < length; i++){
+      if (getFormat(i).bitrate/1000000.0 < bandwidthProvider.getAllocatedBandwidth()/1000000.0 * (1+0.1)) {
+        max_quality = i;
+        Log.i("Minh", "--+ 2 +-- Max considered quality: " + max_quality);
+        break;
+      }
+    }
+
+//    if (max_quality > length-2) { // comment because WISH-SR also considers the lowest quality version
+//      return max_quality;
+//    }
+
+    for (int i = max_quality; i <= length-1; i++) { // WISH-SR considers the lowest quality version
+      if (nowMs == Long.MIN_VALUE || !isBlacklisted(i, nowMs)) {
+        int currentTotalCost = (int)Math.round(100*getTotalCost_SR(i, estimatedThroghputMbps, (double)currentBufferUs/1000000.0));
+        Log.i("Minh", "*** lowest cost: " + lowestCost +  " of quality " + (length - selectedBitrate) + ". Current Cost: " + currentTotalCost);
+        if (currentTotalCost < lowestCost) {
+          selectedBitrate = i;
+          lowestCost = currentTotalCost;
+        }
+      }
+    }
+
+    last_segment_position_ms = (currentBufferUs + playbackPositionUs)/1000;
+
+    return selectedBitrate;
+  }
 
   private int WISH_ABR_NOSSDAV(long nowMs, long currentBufferUs, long playbackPositionUs) {
     double smooth_thrpMbps = get_smooth_throughput(0.125);
-//    estimatedThroghputMbps = Math.min(smooth_thrpMbps, lastThroughputMbps); // NOSSDAV submission
     estimatedThroghputMbps = Math.min(smooth_thrpMbps, bandwidthProvider.getAllocatedBandwidth()/1000000.0);
-//    estimatedThroghputMbps = (1-margin)*bandwidthProvider.getAllocatedBandwidth()/1000000.0;
-    double meanThroughputMbps = 0;
     int num_downloaded_segments = averageThroughputBitps.size();
     int throughput_window = Math.min(slice_window, num_downloaded_segments);
-    for (int i = 1; i <= throughput_window; i++){
-      meanThroughputMbps += averageThroughputBitps.get(num_downloaded_segments - i)/1000000.0;
-    }
-    meanThroughputMbps = meanThroughputMbps*1.0/throughput_window;
+
     Log.i("MINH", " -- ++ " + num_downloaded_segments +
-            " ++ -- EstThrp: " + estimatedThroghputMbps + "Mbps. Buffer[s] " + currentBufferUs/1000000.0 + " Smooth thrp: " + smooth_thrpMbps + "\n");
+        " ++ -- EstThrp: " + estimatedThroghputMbps + "Mbps. Buffer[s] " + currentBufferUs/1000000.0 + " Smooth thrp: " + smooth_thrpMbps + "\n");
 
     int selectedBitrate = length-1;
     int lowestCost = Integer.MAX_VALUE;
@@ -989,7 +1113,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       return length-1;
     }
 
-//    int max_quality = 0;
     int max_quality = length-1;
 
     for (int i = 0; i < length; i++){
@@ -1007,57 +1130,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     for (int i = max_quality; i <= length-2; i++) { // 20210208: avoid choosing the lowest quality, same idea as BBA
       if (nowMs == Long.MIN_VALUE || !isBlacklisted(i, nowMs)) {
         int currentTotalCost = (int)Math.round(100*getTotalCost_v3(i, estimatedThroghputMbps, (double)currentBufferUs/1000000.0, networkType));
-//        int currentTotalCost = (int)(10000*getTotalCost_v3(i, estimatedThroghputMbps, (double)currentBufferUs/1000000.0, networkType));
         Log.i("Minh", "*** lowest cost: " + lowestCost +  " of quality " + (length - selectedBitrate) + ". Current Cost: " + currentTotalCost);
-        if (currentTotalCost < lowestCost) {
-          selectedBitrate = i;
-          lowestCost = currentTotalCost;
-        }
-      }
-    }
-
-    return selectedBitrate;
-  }
-
-  private int WISH_SR_ABR(long nowMs, long currentBufferUs, long playbackPositionUs) {
-    double smooth_thrpMbps = get_smooth_throughput(0.125);
-    estimatedThroghputMbps = Math.min(smooth_thrpMbps, lastThroughputMbps);
-    maxThroughputMbps = 0;
-    int num_downloaded_segments = averageThroughputBitps.size();
-    int throughput_window = Math.min(10, num_downloaded_segments);
-    for (int i = 1; i <= throughput_window; i++){
-      maxThroughputMbps += averageThroughputBitps.get(num_downloaded_segments - i)/1000000.0;
-    }
-    maxThroughputMbps = maxThroughputMbps*1.0/throughput_window;
-    Log.i("MINH", " -- ++ -- EstThrp: " + estimatedThroghputMbps + "Mbps. currentBuffer[s] " +
-        currentBufferUs/1000000.0 + " avg.thrp: " +maxThroughputMbps + "\n");
-
-    int selectedBitrate = length-1;
-    int lowestCost = Integer.MAX_VALUE;
-
-    if (currentBufferUs <= buffLowThresholdS*1000000) {
-      return length-1;
-    }
-
-    int max_quality = length-1;
-
-    for (int i = 0; i < length; i++) {
-      if (getFormat(i).bitrate / 1000000.0 < smooth_thrpMbps) {
-        max_quality = i;
-        break;
-      }
-    }
-
-    if (max_quality > length-2) { // 20210208: avoid choosing the lowest quality, same idea as BBA
-      return max_quality;
-    }
-
-    int target_video_width = getFormat(0).width;
-    for (int i = max_quality; i <= length-2; i++) {
-      if (nowMs == Long.MIN_VALUE || !isBlacklisted(i, nowMs)) {
-        int currentTotalCost = (int)Math.round(100*getTotalCost_SR(i, estimatedThroghputMbps, (double)currentBufferUs/1000000.0, target_video_width));
-        Log.i("Minh", "*** lowest cost: " + lowestCost +  " of quality " + (length - selectedBitrate) +
-                  ". Current Cost: " + currentTotalCost + ". Enable SR? " + srFlag[selectedBitrate]);
         if (currentTotalCost < lowestCost) {
           selectedBitrate = i;
           lowestCost = currentTotalCost;
@@ -1075,31 +1148,29 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
   // MINH [Proposed ABR algorithm] - ADD - E
 
   // MINH [Compared ABR algorthms] - ADD - S
-    // SARA ABR
+  // SARA ABR
   private int SARA_ABR(long nowMs, double currentBufferS, double lastThroughputbps) {
     int selectedIdx = lastQualityIndex;
-    final double bufferI = (buffMax <= 20) ? SD : 2*SD; // From 26/01/2021 bufferI = SD (BuffSize = 20s), = 2SD (BuffSize = 40s). Before, bufferI = 2*SD
+    final double bufferI = (buffMax <= 20) ? SD : 2*SD; // bufferI = SD (BuffSize = 20s), = 2SD (BuffSize = 40s). Before, bufferI = 2*SD
     final double bufferAlpha = buffMax*0.5;
     final double bufferBeta = buffMax;
     final int    SARA_SAMPLE_COUNT = 5; // # of segments for moving weighted average
     double available_buffer = currentBufferS - bufferI; // Atream player use this variable.
 
     saraEstimatedThroughputbps = 1000000.0*getWeightedHarmonicMeanThroughput_Mbps(selectedQualityBitrateBitps, saraLastThroughputMbpsList, SARA_SAMPLE_COUNT);
-//    estimatedThroghputMbps = saraEstimatedThroughputbps/1000000.0;
     if (currentBufferS <= bufferI){
-      Log.i("Minh", "\t\t SARA - 0");
+      Log.i("Minh", "\t\t SARA - buffer < I");
       selectedIdx = length - 1;
     }
     else {
-//      Log.i("Minh", "SARA_Wn/Hn:  Buffer: " + currentBufferS +
-//                            "\n Last thrp [Mbps] " + lastThroughputbps/1000000.0 +
-//                            "\n EstimatedThrp [Mbps] " + saraEstimatedThroughputbps/1000000.0 +
-//                            "\n Estimated Download Time: " + getFormat(lastQualityIndex).bitrate*SD*1.0/saraEstimatedThroughputbps);
+      Log.i("Minh", "SARA_Wn/Hn:  Buffer: " + currentBufferS +
+                            "\n Last thrp [Mbps] " + lastThroughputbps/1000000.0 +
+                            "\n EstimatedThrp [Mbps] " + saraEstimatedThroughputbps/1000000.0 +
+                            "\n Estimated Download Time: " + getFormat(lastQualityIndex).bitrate*SD*1.0/saraEstimatedThroughputbps);
       if (getFormat(lastQualityIndex).bitrate*SD*1.0/saraEstimatedThroughputbps > available_buffer) {
         for (int i = lastQualityIndex+1; i < length; i++) {
-          if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps <= available_buffer) {
+          if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps < available_buffer) {
             selectedIdx = i;
-            Log.i("Minh", "\t\t SARA - 1. bitrate = " + getFormat(selectedIdx).bitrate/1000000.0);
             break;
           }
           else {
@@ -1108,18 +1179,21 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         }
       }
       else if (available_buffer <= bufferAlpha) {
+        Log.i("Minh", "\t\t SARA - buffer < Alpha");
         if (lastQualityIndex == 0){
           selectedIdx = lastQualityIndex;
         }
         else {
-          if (getFormat(lastQualityIndex-1).bitrate*SD*1.0/saraEstimatedThroughputbps < available_buffer)
-            selectedIdx = lastQualityIndex-1;
+          int higherQualityIndex = lastQualityIndex-1;
+          if (getFormat(higherQualityIndex).bitrate*SD*1.0/saraEstimatedThroughputbps < available_buffer)
+            selectedIdx = higherQualityIndex;
           else
             selectedIdx = lastQualityIndex;
         }
         Log.i("Minh", "\t\t SARA - 2. bitrate = " + getFormat(selectedIdx).bitrate/1000000.0 + " thrp:" + saraEstimatedThroughputbps/1000000 + " delta_buf = " + (currentBufferS - bufferI));
       }
       else if (available_buffer <= bufferBeta) {
+        Log.i("Minh", "\t\t SARA - buffer < Beta");
         if (lastQualityIndex == 0){
           selectedIdx = lastQualityIndex;
         }
@@ -1138,10 +1212,11 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         }
       }
       else if (available_buffer > bufferBeta) {
+        Log.i("Minh", "\t\t SARA - buffer >>> Beta");
         for (int i = 0; i <= lastQualityIndex; i++) {
-          if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps <= (currentBufferS - bufferAlpha)) {
+//          if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps <= (currentBufferS - bufferAlpha)) { // based on ALgorithm in the paper
+          if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps > available_buffer) { // based on github: https://github.com/pari685/AStream/tree/master/dist/client
             selectedIdx = i;
-            Log.i("Minh", "\t\t SARA - 4. bitrate = " + getFormat(selectedIdx).bitrate/1000000.0 + " thrp:" + saraEstimatedThroughputbps/1000000 + " delta_buf = " + (currentBufferS - bufferI));
             // TODO: currently, the sleep time is defined by exoplayer as default.
             break;
           }
@@ -1155,33 +1230,39 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         selectedIdx = lastQualityIndex;
       }
     }
-    Log.i("Minh", "===> SARA Final selected quality: " + selectedIdx);
+    Log.i("Minh", "===> SARA Final selected quality: " + selectedIdx +
+        " at birate [Mbps]: " + getFormat(selectedIdx).bitrate/1000000.0 +
+        " when buffer [s]: " + currentBufferS +
+        " Harmornic thrp [Mbps]: " + saraEstimatedThroughputbps/1000000);
     return selectedIdx;
   }
 
   private double getWeightedHarmonicMeanThroughput_Mbps(List<Integer> selectedQualityBitrateBitps,
-                                                        List<Double> lastThroughputMbpsList,
-                                                        int num_samples) {
-    Log.i("Minh", "Num of Selected Bitrate: " + selectedQualityBitrateBitps.size() +
-                    "\t\t Num of last throughput: " + lastThroughputMbpsList.size());
+      List<Double> lastThroughputMbpsList,
+      int num_samples) {
     double estimatedThrougphut;
     int num_downloaded_segments = selectedQualityBitrateBitps.size();
+
+    Log.i("Minh", "Num of Selected Bitrate: " + num_downloaded_segments +
+        "\t\t Num of last throughput: " + lastThroughputMbpsList.size());
 
     if (num_downloaded_segments == 0) {
       estimatedThrougphut = 1;
     } else {
-      if (num_samples == 0) {
-        if (saraLastThroughputMbpsList.get(num_downloaded_segments - 1) == 0)
-          saraLastThroughputMbpsList.set(num_downloaded_segments - 1, 1.0); // for the first segment
-
-        double lastbitrateMbps = (double) (
-            selectedQualityBitrateBitps.get(selectedQualityBitrateBitps.size() - 1) / 1000000.0);
-        saraSumWeight += lastbitrateMbps;
-        saraSumWeightDividedThroughput += (double) (lastbitrateMbps / saraLastThroughputMbpsList
-            .get(num_downloaded_segments - 1));
-      } else {
+//      if (num_samples == 0) {
+//        Log.e("Minh", "????? # of samples: 0" );
+//        if (saraLastThroughputMbpsList.get(num_downloaded_segments - 1) == 0)
+//          saraLastThroughputMbpsList.set(num_downloaded_segments - 1, 1.0); // for the first segment
+//
+//        double lastbitrateMbps = (double) (
+//                selectedQualityBitrateBitps.get(num_downloaded_segments - 1) / 1000000.0);
+//        saraSumWeight += lastbitrateMbps;
+//        saraSumWeightDividedThroughput += (double) (lastbitrateMbps / saraLastThroughputMbpsList
+//                .get(num_downloaded_segments - 1));
+//      } else
+      {
         int final_samples = Math.min(num_samples, num_downloaded_segments);
-        Log.i("Minh", "\t # of sample: " + final_samples );
+        Log.i("Minh", "\t # of samples: " + final_samples );
         saraSumWeight = 0;
         saraSumWeightDividedThroughput = 0;
 
@@ -1189,14 +1270,13 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
           double weight = (double) (
               selectedQualityBitrateBitps.get(num_downloaded_segments - i) / 1000000.0);
           saraSumWeight += weight;
-          saraSumWeightDividedThroughput += (double) (weight / saraLastThroughputMbpsList
-              .get(num_downloaded_segments - i));
+          saraSumWeightDividedThroughput += (double) (weight / saraLastThroughputMbpsList.get(num_downloaded_segments - i));
         }
       }
       estimatedThrougphut = saraSumWeight/saraSumWeightDividedThroughput;
       Log.i("Minh", "Harmonic Mean: Est Thrp = " + estimatedThrougphut
           + "\n last bitrate [Mbps]: " + (selectedQualityBitrateBitps.get(selectedQualityBitrateBitps.size()-1)/1000000.0) +
-                "\t Last thrp [Mbps]: " + saraLastThroughputMbpsList.get(num_downloaded_segments-1)
+          "\t Last thrp [Mbps]: " + saraLastThroughputMbpsList.get(num_downloaded_segments-1)
           + "\n SumWeight: " + saraSumWeight + "\t Sum w/d: " + saraSumWeightDividedThroughput);
     }
 
@@ -1344,7 +1424,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       if (play_state == SQUAD_PLAY_STATE.INIT ||
           (play_state == SQUAD_PLAY_STATE.SLOW_START &&
               2*(length - lastQualityIndex) < length && last_dl_time < 2.0*SD)) {
-          play_state = SQUAD_PLAY_STATE.SLOW_START;
+        play_state = SQUAD_PLAY_STATE.SLOW_START;
       }
       else {
         play_state = SQUAD_PLAY_STATE.STEADY;
@@ -1386,8 +1466,8 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
           int bitrate_window8 = 8;
           int bitrate_window16 = 16;
           double weighted_spectrum = br_weight*SQUAD_get_spectrum(bitrate_window4, considered_quality_idx) +
-                                     br_weight*SQUAD_get_spectrum(bitrate_window8, considered_quality_idx) +
-                                     br_weight*SQUAD_get_spectrum(bitrate_window16, considered_quality_idx);
+              br_weight*SQUAD_get_spectrum(bitrate_window8, considered_quality_idx) +
+              br_weight*SQUAD_get_spectrum(bitrate_window16, considered_quality_idx);
           double next_dl_time = getFormat(considered_quality_idx).bitrate*1.0/next_dl_rate_bps;
           br_spectrum_key_weighted_spectrum.add(weighted_spectrum);
           br_spectrum_value_bitrate_bps.add(getFormat(considered_quality_idx).bitrate);
@@ -1402,14 +1482,14 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         List<Integer> next_spectrum_rates_bps = br_spectrum_value_bitrate_bps;
         Collections.reverse(next_spectrum_rates_bps);
         Log.i("MINH", "SQUAD: test next_spectrum_rates_bps.last (min): " + next_spectrum_rates_bps.get(next_spectrum_rates_bps.size()-1) +
-                               " next_spectrum_rates_bps.first(max): " + next_spectrum_rates_bps.get(0));
+            " next_spectrum_rates_bps.first(max): " + next_spectrum_rates_bps.get(0));
         next_rate = next_spectrum_rates_bps.get(0); // max value;
 
         if (next_rate < getFormat(lastQualityIndex).bitrate) {
           long next_dl_rate_bps = getFormat(lastQualityIndex).bitrate; //get_percentile(averageThroughputBitps, 20);
           Log.i("MINH", "======== DECREASE CASE: net_rateMbps: " + next_rate/1000000.0 +
-                                "\n\tLast rate: " + getFormat(lastQualityIndex).bitrate/1000000.0 +
-                                "\n\tnext_dl_rate_Mps: " + next_dl_rate_bps/1000000.0);
+              "\n\tLast rate: " + getFormat(lastQualityIndex).bitrate/1000000.0 +
+              "\n\tnext_dl_rate_Mps: " + next_dl_rate_bps/1000000.0);
 //          for (int i = length-1; i >= 0; i--) { //from min to max quality
 //            int considered_quality_idx = length - 1;
 //            double br_weight = Math.pow(getFormat(length - 2).bitrate * 1.0 / getFormat(0).bitrate,
@@ -1550,6 +1630,84 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     Log.i("Minh", "SQUAD: squad_spectrum: " + squad_spectrum);
     return squad_spectrum;
   }
+
+  private int BOLA_ABR (long nowMS, double m_curr_buffer_S) { // BOLA_basic
+    // double buffer,int Q_max,double bw_prv,double *Vmax,double *Q_D,double br_prv
+    if (SD == 0) {
+      SD = 4;
+    }
+    int next_quality_idx = length-1;
+    double[] Sm = new double[length]; // segment sizes
+    double[] Vm = new double[length]; // utilities
+    double[] value = new double[length]; // the values of optimization problem
+    double   max_value = 0; // the max value of equation (9) in the paper
+    double V;             // control parameter for overflow case
+    double gma = 5.0/4; // control parameter for rebuffering case
+    double SM = Double.MAX_VALUE; // minimum segmet size
+
+    if (SD < 4) {SD=4;}
+
+    // compute segment size
+    for (int i = 0; i < length; i ++) {
+      Sm[i] = SD*getFormat(i).bitrate/1000000.0;
+    }
+    SM = Sm[length-1];  // get the min segment size
+
+    for (int i = 0; i < length; i++) {
+      Vm[i] = Math.log(Sm[i]/SM);
+//      Log.i("BOLA", "Vm[" + i + "]: " + Vm[i]);
+    }
+
+    V = ((buffMax/SD)-1.0)/(Vm[0]+(gma*SD));
+//    Log.i("BOLA", "V:" + V + "\n"
+//            + "buffmax = " + buffMax + "\n"
+//            + " \tSD: " + SD + "\n");
+
+    // equation 9
+    for (int i = 0; i < length; i++) {
+      value[i]= (V*Vm[i]+V*gma*SD-(m_curr_buffer_S*1.0)/SD)/Sm[i];
+      Log.i("BOLA", "Value[" + i + "]: " + value[i]);
+    }
+
+    //choose next_quality_idx that maximize vaWe still need a minimum buffer size 3p for the aWe still need a minimum buffer size 3p for the algorithm to work effectivelylgorithm to work effectivelylue
+    for(int i = 0; i < length; i++) {
+      if (value[i] > max_value)
+      {
+        max_value = value[i];
+        next_quality_idx=i;
+      }
+    }
+
+    return next_quality_idx;
+  }
+
+  private int PANDA_ABR(long nowMs, double curr_buff_S) {
+    int next_quality_idx = length-1;
+    double m_kappa = 0.28;
+    double m_omega = 0.3;
+    double m_alpha = 0.2;
+    double _beta = 0.2;
+    double m_epsilon = 0.15;
+    double m_bMin = 0; // TODO: need to update
+
+    long m_throughputMeasured = bandwidthProvider.getAllocatedBandwidth();
+    long m_lastBandwidthShare_bps = 0;
+    long m_lastSmoothBandwidthShare = 0;
+
+    if (qualityLevelList.size() == 0) {return length-1;}
+    if (qualityLevelList.size() == 1) {
+      m_lastBandwidthShare_bps = m_throughputMeasured;
+      m_lastSmoothBandwidthShare = m_lastBandwidthShare_bps;
+    }
+
+    return next_quality_idx;
+  }
+
+  private int FESTIVE_ABR(long nowMs, double curr_buff_S) {
+    int next_quality_idx = length-1;
+
+    return next_quality_idx;
+  }
 // MINH [Compared ABR algorthms] - ADD - E
 
   private long minDurationForQualityIncreaseUs(long availableDurationUs) {
@@ -1589,7 +1747,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     @Override
     public long getAllocatedBandwidth() {
       long totalBandwidth = (long) (bandwidthMeter.getBitrateEstimate() * bandwidthFraction);
-//      Log.i("MINH", "bandwidthFraction: " + bandwidthFraction);
       long allocatableBandwidth = max(0L, totalBandwidth - reservedBandwidth);
       if (allocationCheckpoints == null) {
         return allocatableBandwidth;
