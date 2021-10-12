@@ -17,7 +17,6 @@ package com.google.android.exoplayer2.trackselection;
 
 import static java.lang.Math.max;
 
-import android.content.Context;
 import android.util.Log;
 import androidx.annotation.CallSuper;
 import androidx.annotation.Nullable;
@@ -32,11 +31,6 @@ import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.Clock;
 import com.google.common.collect.Iterables;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -105,7 +99,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
    * WISH_SR: WISH integrated with Super Resolution
    * */
   public enum ABR {
-    TEST, EXOPLAYER, SARA, BBA, PENSIEVE, BOLA, PANDA, FESTIVE, ELASTIC, FASTMPC, SQUAD, WISH_NOSSDAV, WISH_SR, WISH_NOSSDAV_xi1, WISH_NOSSDAV_xi06, WISH_NOSSDAV_xi04, WISH_NOSSDAV_delta08, WISH_NOSSDAV_delta05
+    TEST, EXOPLAYER, SARA, BBA, PENSIEVE, BOLA, PANDA, FESTIVE, ELASTIC, FASTMPC, SQUAD, WISH_NOSSDAV, WISH_SR, WISH_NOSSDAV_xi1, WISH_NOSSDAV_xi06, WISH_NOSSDAV_xi04, WISH_NOSSDAV_delta08, WISH_NOSSDAV_delta05, WISH_NOSSDAV_BITMOVIN
   }
   enum QUALITY_CONFIG{
     LINEAR, BITRATE_BASED
@@ -114,12 +108,10 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     INIT, SLOW_START, STEADY
   }
 
-  public static final ABR implementedABR = ABR.WISH_NOSSDAV;
+  public static final ABR implementedABR = ABR.WISH_NOSSDAV_BITMOVIN;
   public static final QUALITY_CONFIG quality_config = QUALITY_CONFIG.BITRATE_BASED;
   private static SQUAD_PLAY_STATE play_state = SQUAD_PLAY_STATE.INIT;
-//  private static double squad_spectrum = 0;
-//  private static double squad_sum_bitrateKbps = 0;
-//  private static int    squad_num_switch = 0;
+
   // Minh - Some constant value for SR ABR - ADD - E
 
   /** Factory for {@link AdaptiveTrackSelection} instances. */
@@ -478,8 +470,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       segmentStartTime.add(last_segment_position_ms);
 
       if (srFlag[selectedIndex]) {
-        Log.i("MINH", "=========> OREKA. First segments" +
-            "\t qualityIdx: " + selectedIndex);
         sr_start_content_position_ms.add(considering_segment_position_ms);
       }
 
@@ -501,7 +491,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     }
 
     // MINH [Use SR ABR]- MOD - S
-    // delete the last recorded if it is requesting for the last segment
+    // delete the last recorded data if it is requesting for the last segment
 
     isRequestAgain = (last_segment_position_ms == considering_segment_position_ms) ? true : false;
     int newSelectedIndex = 0;
@@ -615,7 +605,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       return queueSize;
     }
 
-    int idealSelectedIndex = determineIdealSelectedIndex(nowMs);  // MINH: ??? What is this variable for?
+    int idealSelectedIndex = determineIdealSelectedIndex(nowMs);
 
     Format idealFormat = getFormat(idealSelectedIndex);
     // If the chunks contain video, discard from the first SD chunk beyond
@@ -713,8 +703,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         return i;
       }
     }
-//    Log.e("MINH", "testABR: selected index: " + selectedIndex) ;
-//    lowestBitrateAllowedIndex = (selectedIndex < length-1) ? selectedIndex + 1 : 0;
 
     return lowestBitrateAllowedIndex;
   }
@@ -729,9 +717,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     estimatedThroghputMbps = 0;
     num_of_quality = length;
     maxThroughputMbps = 0;
-//    squad_spectrum = 0;
-//    squad_num_switch = 0;
-//    squad_sum_bitrateKbps = 0;
+
     // clear the data from the previous run
     timestampMs.clear();
     selectedQualityIndex.clear();
@@ -753,6 +739,10 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       case EXOPLAYER:
         chosen_quality_index = determineIdealSelectedIndex(nowMs);
         break;
+      case WISH_NOSSDAV_BITMOVIN:
+        set_weights_v3(0.4, 0.5);
+        chosen_quality_index = WISH_ABR_NOSSDAV(nowMs, bufferedDurationUs, playbackPositionUs);
+        break;
       case WISH_NOSSDAV:
         set_weights_v3(0.8, 1);
         chosen_quality_index = WISH_ABR_NOSSDAV(nowMs, bufferedDurationUs, playbackPositionUs);
@@ -773,8 +763,8 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         set_weights_v3(0.5, 1);
         chosen_quality_index = WISH_ABR_NOSSDAV(nowMs, bufferedDurationUs, playbackPositionUs);
         break;
-      case WISH_SR:
-        set_weights_sr(0.8, 1); // TODO: update it
+      case WISH_SR: // TODO: need to improve the performance
+        set_weights_sr(0.8, 1);
         chosen_quality_index = WISH_SR_ABR(nowMs, bufferedDurationUs, playbackPositionUs);
         break;
       case SARA:
@@ -788,7 +778,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         chosen_quality_index = BBA_ABR(nowMs,(double)bufferedDurationUs/1000000.0);
         break;
       case PENSIEVE:
-        chosen_quality_index = PENSIEVE_ABR(nowMs, bufferedDurationUs/100000);
         Log.e("MINH", "This ABR is not supported");
         break;
       case ELASTIC:
@@ -802,12 +791,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         break;
       case BOLA:
         chosen_quality_index = BOLA_ABR(nowMs, (double)bufferedDurationUs/1000000.0);
-        break;
-      case PANDA:
-        chosen_quality_index = PANDA_ABR(nowMs, (double)bufferedDurationUs/1000000.0);
-        break;
-      case FESTIVE:
-        chosen_quality_index = FESTIVE_ABR(nowMs, (double)bufferedDurationUs/1000000.0);
         break;
       default:
         chosen_quality_index = determineIdealSelectedIndex(nowMs);
@@ -1001,8 +984,8 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 
     bandwidthCost = segmentFormat.bitrate*1.0/(estimatedThroughputMbps*1000000.0);  // bitrate is in bps
     bufferCost = bandwidthCost*(SD*1.0/(currentbufferS - bufferThreshold));
-    qualityCost_cn = Math.exp(qualityLevelList.get(0) + average_quality - 2*current_quality_level)/denominator_exp;   // TODO: need updated
-    qualityCost_sr = Math.exp(qualityLevelList.get(0) + average_quality - 2*current_quality_level_sr)/denominator_exp; // TODO: need updated
+    qualityCost_cn = Math.exp(qualityLevelList.get(0) + average_quality - 2*current_quality_level)/denominator_exp;
+    qualityCost_sr = Math.exp(qualityLevelList.get(0) + average_quality - 2*current_quality_level_sr)/denominator_exp;
     powerCost = segmentFormat.width * segmentFormat.height * 100.0 / (target_width*target_height*batteryLevel);
 
 
@@ -1044,7 +1027,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     else if (upscale_factor == 4){
       quality_improvementSR = 0.099;
     }
-//    Log.i("Minh", "********* Upscale factor: " + upscale_factor);
     return quality_improvementSR;
   }
 
@@ -1076,10 +1058,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         break;
       }
     }
-
-//    if (max_quality > length-2) { // comment because WISH-SR also considers the lowest quality version
-//      return max_quality;
-//    }
 
     for (int i = max_quality; i <= length-1; i++) { // WISH-SR considers the lowest quality version
       if (nowMs == Long.MIN_VALUE || !isBlacklisted(i, nowMs)) {
@@ -1214,10 +1192,8 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
       else if (available_buffer > bufferBeta) {
         Log.i("Minh", "\t\t SARA - buffer >>> Beta");
         for (int i = 0; i <= lastQualityIndex; i++) {
-//          if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps <= (currentBufferS - bufferAlpha)) { // based on ALgorithm in the paper
           if (getFormat(i).bitrate*SD*1.0/saraEstimatedThroughputbps > available_buffer) { // based on github: https://github.com/pari685/AStream/tree/master/dist/client
             selectedIdx = i;
-            // TODO: currently, the sleep time is defined by exoplayer as default.
             break;
           }
           else {
@@ -1249,29 +1225,16 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     if (num_downloaded_segments == 0) {
       estimatedThrougphut = 1;
     } else {
-//      if (num_samples == 0) {
-//        Log.e("Minh", "????? # of samples: 0" );
-//        if (saraLastThroughputMbpsList.get(num_downloaded_segments - 1) == 0)
-//          saraLastThroughputMbpsList.set(num_downloaded_segments - 1, 1.0); // for the first segment
-//
-//        double lastbitrateMbps = (double) (
-//                selectedQualityBitrateBitps.get(num_downloaded_segments - 1) / 1000000.0);
-//        saraSumWeight += lastbitrateMbps;
-//        saraSumWeightDividedThroughput += (double) (lastbitrateMbps / saraLastThroughputMbpsList
-//                .get(num_downloaded_segments - 1));
-//      } else
-      {
-        int final_samples = Math.min(num_samples, num_downloaded_segments);
-        Log.i("Minh", "\t # of samples: " + final_samples );
-        saraSumWeight = 0;
-        saraSumWeightDividedThroughput = 0;
+      int final_samples = Math.min(num_samples, num_downloaded_segments);
+      Log.i("Minh", "\t # of samples: " + final_samples );
+      saraSumWeight = 0;
+      saraSumWeightDividedThroughput = 0;
 
-        for (int i = 1; i <= final_samples; i++) {
-          double weight = (double) (
-              selectedQualityBitrateBitps.get(num_downloaded_segments - i) / 1000000.0);
-          saraSumWeight += weight;
-          saraSumWeightDividedThroughput += (double) (weight / saraLastThroughputMbpsList.get(num_downloaded_segments - i));
-        }
+      for (int i = 1; i <= final_samples; i++) {
+        double weight = (double) (
+            selectedQualityBitrateBitps.get(num_downloaded_segments - i) / 1000000.0);
+        saraSumWeight += weight;
+        saraSumWeightDividedThroughput += (double) (weight / saraLastThroughputMbpsList.get(num_downloaded_segments - i));
       }
       estimatedThrougphut = saraSumWeight/saraSumWeightDividedThroughput;
       Log.i("Minh", "Harmonic Mean: Est Thrp = " + estimatedThrougphut
@@ -1285,7 +1248,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 
   // BBA-0
   private int BBA_ABR(long nowMs, double m_cur_buffS){
-//    estimatedThroghputMbps = (double)(bandwidthProvider.getAllocatedBandwidth()/1000000.0); //Mbps
     final double BBA_rS = 0.2*buffMax;
     final double BBA_cuS = 0.7*buffMax;
     final double BBA_a = 1.0*(getFormat(0).bitrate - getFormat(length-1).bitrate)/BBA_cuS;
@@ -1296,7 +1258,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     int     m_quality_plus = 0;
     int     m_quality_subtract = 0;
     f_buff_value = BBA_a*m_cur_buffS + BBA_b; // (kbps)
-//    Log.i("Minh", "----- Current Bitrate fitting buff: " + f_buff_value + " current_buff: " + m_cur_buffS);
     //////////////////////////////////////////////////////////////////////////
     if (lastQualityIndex == 0)
       m_quality_plus = lastQualityIndex;
@@ -1335,75 +1296,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     }
     //////////////////////////////////////////////////////////////////////////
     return m_selectedQualityIndex;
-  }
-
-  // EKREM: Pensieve ABR
-  private static String assetFilePath(Context context, String assetName) throws IOException {
-    // we need the absolute path of input for model because Pytorch Mobile expects the absolute path
-    File file = new File(context.getFilesDir(), assetName);
-    if (file.exists() && file.length() > 0) {
-      return file.getAbsolutePath();
-    }
-
-    // This is to get the input file
-    try (InputStream is = context.getAssets().open(assetName)) {
-      try (OutputStream os = new FileOutputStream(file)) {
-        byte[] buffer = new byte[4 * 1024];
-        int read;
-        while ((read = is.read(buffer)) != -1) {
-          os.write(buffer, 0, read);
-        }
-        os.flush();
-      }
-      return file.getAbsolutePath();
-    }
-  }
-
-  private int PENSIEVE_ABR(long nowMs, long currentBufferUs) {
-    // Load the model here
-//    Module model = Module.load(assetFilePath(this, "model_own.pt"));
-//    double estimatedThroghputMbps = (double) bandwidthProvider.getAllocatedBandwidth()/1000000; //Mbps
-//
-//    int selectedBitrate = 0;
-//    /**
-//     * State is 6 vectors, each vector has 8 values
-//     * 1 -> Last Bitrate/Quality level
-//     * 2 -> Current Buffer level
-//     * 3 -> Network throughput for past 8 chunks
-//     * 4 -> Download time for past 8 chunks
-//     * 5 -> Availabe sizes for next chunk (in MB)
-//     * 6 -> Number of chunks remained in the video
-//     * [[0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.1744],
-//     *  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.4000],
-//     *  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.1126],
-//     *  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.3999],
-//     *  [0.1556, 0.3989, 0.6111, 0.9577, 1.4318, 2.1231, 0.0000, 0.0000],
-//     *  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.9792]
-//     */
-//    // Prepare the state here, we might need to find a way to keep track of past 8 chunks
-//    double [] lastBitrate = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-//    double [] buffer = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-//    double [] throughput = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-//    double [] down_time = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-//    double [] next_sizes = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-//    double [] number_of_chunks = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-//    long[] shape = new long[]{1, lastBitrate.length};
-//
-//    Tensor s_bitrate = Tensor.fromBlob(lastBitrate, shape);
-//    Tensor s_buffer = Tensor.fromBlob(buffer, shape);
-//    Tensor s_through = Tensor.fromBlob(throughput, shape);
-//    Tensor s_down = Tensor.fromBlob(down_time, shape);
-//    Tensor s_next = Tensor.fromBlob(next_sizes, shape);
-//    Tensor s_chunks = Tensor.fromBlob(number_of_chunks, shape);
-//
-//    Tensor [] stateTensor = {s_bitrate, s_buffer, s_through, s_down, s_next, s_chunks};
-//
-//    // pass the state to the model and get the prediction
-//    Tensor predictedBitrate = model.forward(IValue.from(Arrays.toString(stateTensor))).toTensor();
-//    int [] bitratePrediction = predictedBitrate.getDataAsIntArray();
-    int selectedBitrate = 0; //bitratePrediction[0];
-
-    return selectedBitrate;
   }
 
   private long get_percentile (List<Long> throughput_list, double percentile) {
@@ -1453,7 +1345,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
           double next_dl_rate_bps = bandwidthProvider.getAllocatedBandwidth();
           double br_weight = Math.pow(getFormat(length-2).bitrate*1.0/getFormat(0).bitrate, 1.0/(i+1));
           int considered_quality_idx = length-1;
-          Log.i("MINH", "###########################");
           Log.i("MINH", "SQUAD: quality " + (length-i) + " next_dl_rate_kbps: " + next_dl_rate_bps/1000.0 + "\t br_weight: " + br_weight);
 
           if(getFormat(i).bitrate < next_dl_rate_bps)
@@ -1486,56 +1377,11 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
         next_rate = next_spectrum_rates_bps.get(0); // max value;
 
         if (next_rate < getFormat(lastQualityIndex).bitrate) {
-          long next_dl_rate_bps = getFormat(lastQualityIndex).bitrate; //get_percentile(averageThroughputBitps, 20);
+          long next_dl_rate_bps = getFormat(lastQualityIndex).bitrate;
           Log.i("MINH", "======== DECREASE CASE: net_rateMbps: " + next_rate/1000000.0 +
               "\n\tLast rate: " + getFormat(lastQualityIndex).bitrate/1000000.0 +
               "\n\tnext_dl_rate_Mps: " + next_dl_rate_bps/1000000.0);
-//          for (int i = length-1; i >= 0; i--) { //from min to max quality
-//            int considered_quality_idx = length - 1;
-//            double br_weight = Math.pow(getFormat(length - 2).bitrate * 1.0 / getFormat(0).bitrate,
-//                1.0 / (i + 1));
-//
-//            if (getFormat(i).bitrate < next_dl_rate_bps)
-//              considered_quality_idx = i;
-//            else
-//              continue;
-//
-//            int bitrate_window4 = 4;
-//            int bitrate_window8 = 8;
-//            int bitrate_window16 = 16;
-//            double weighted_spectrum =
-//                br_weight * SQUAD_get_spectrum(bitrate_window4, considered_quality_idx) +
-//                    br_weight * SQUAD_get_spectrum(bitrate_window8, considered_quality_idx) +
-//                    br_weight * SQUAD_get_spectrum(bitrate_window16, considered_quality_idx);
-//            double next_dl_time =
-//                getFormat(considered_quality_idx).bitrate * 1.0 / next_dl_rate_bps;
-//            br_spectrum_key_weighted_spectrum.add(weighted_spectrum);
-//            br_spectrum_value_bitrate_bps.add(getFormat(considered_quality_idx).bitrate);
-//          }
-//
-//          if (br_spectrum_value_bitrate_bps.size() == 0) {
-//            Log.i("MINH", "//////////// SQUAD -2- chooses quality " + (length-lastQualityIndex));
-//            return lastQualityIndex;
-//          }
-//
-//          next_spectrum_rates_bps.clear();
-//          next_spectrum_rates_bps = br_spectrum_value_bitrate_bps;
-//          Log.i("MINH", "br_spectrum_value_bitrate_bps.size(): " + br_spectrum_value_bitrate_bps.size() + "\nnext_spectrum_rates_bps.size() + " + next_spectrum_rates_bps.size());
-//          Collections.reverse(next_spectrum_rates_bps);
-//          Log.i("MINH", "SQUAD: RECAL. test next_spectrum_rates_bps.last (min): " + next_spectrum_rates_bps.get(next_spectrum_rates_bps.size()-1) +
-//              " next_spectrum_rates_bps.first(max): " + next_spectrum_rates_bps.get(0));
-//
-//          for (int i = 0; i < next_spectrum_rates_bps.size(); i++){
-//            if(next_spectrum_rates_bps.get(i)/next_dl_rate_bps > 2) {
-//              Log.i("MINH", "Download rate of quality " + i + " > 2");
-//              next_spectrum_rates_bps.remove(i);
-//            }
-//          }
-//          if (next_spectrum_rates_bps.size() == 0) {
-//            next_rate = getFormat(0).bitrate;
-//          }
-//          else
-//          next_rate = next_spectrum_rates_bps.get(0); // max value;
+
           double ch_s = buffMax*0.5;
           if (currentBufferus/1000000.0 > ch_s &&
               currentBufferus/1000000.0 + SD * (1 - next_rate*1.0/next_dl_rate_bps) > ch_s) {
@@ -1568,23 +1414,10 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     return next_quality_idx;
   }
 
-  private double SQUAD_get_avg_bitrateKbps(List<Long> bitrate_bpsList, double stall_duration_S) {
-    int numSegments = bitrate_bpsList.size();
-    int numStallSegment = (int)(stall_duration_S*1.0/SD);
-    double sumBitrateKbps = 0;
-
-    for (int i = 0; i < numSegments; i ++) {
-      sumBitrateKbps += (double)(bitrate_bpsList.get(i)/1000.0);
-    }
-
-    return (double)(sumBitrateKbps*1.0/(numSegments + numStallSegment));
-  }
   private double SQUAD_get_spectrum(int window_size, int next_quality) {
     Log.i("MINH", " **** Go to SQUAD_get_spectrum. window_size: " + window_size + ". Next_quality: " + (length-next_quality));
     List<Double> chosen_bitrate_Mbps_history_list = new ArrayList<>();
     int num_downloaded_segment = selectedQualityBitrateBitps.size();
-    int squad_num_switch = 0;
-    double squad_sum_bitrateKbps = 0;
     double squad_spectrum = 0;
 
     double zh = 0;
@@ -1655,13 +1488,9 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 
     for (int i = 0; i < length; i++) {
       Vm[i] = Math.log(Sm[i]/SM);
-//      Log.i("BOLA", "Vm[" + i + "]: " + Vm[i]);
     }
 
     V = ((buffMax/SD)-1.0)/(Vm[0]+(gma*SD));
-//    Log.i("BOLA", "V:" + V + "\n"
-//            + "buffmax = " + buffMax + "\n"
-//            + " \tSD: " + SD + "\n");
 
     // equation 9
     for (int i = 0; i < length; i++) {
@@ -1680,34 +1509,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 
     return next_quality_idx;
   }
-
-  private int PANDA_ABR(long nowMs, double curr_buff_S) {
-    int next_quality_idx = length-1;
-    double m_kappa = 0.28;
-    double m_omega = 0.3;
-    double m_alpha = 0.2;
-    double _beta = 0.2;
-    double m_epsilon = 0.15;
-    double m_bMin = 0; // TODO: need to update
-
-    long m_throughputMeasured = bandwidthProvider.getAllocatedBandwidth();
-    long m_lastBandwidthShare_bps = 0;
-    long m_lastSmoothBandwidthShare = 0;
-
-    if (qualityLevelList.size() == 0) {return length-1;}
-    if (qualityLevelList.size() == 1) {
-      m_lastBandwidthShare_bps = m_throughputMeasured;
-      m_lastSmoothBandwidthShare = m_lastBandwidthShare_bps;
-    }
-
-    return next_quality_idx;
-  }
-
-  private int FESTIVE_ABR(long nowMs, double curr_buff_S) {
-    int next_quality_idx = length-1;
-
-    return next_quality_idx;
-  }
 // MINH [Compared ABR algorthms] - ADD - E
 
   private long minDurationForQualityIncreaseUs(long availableDurationUs) {
@@ -1723,10 +1524,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 
     /** Returns the allocated bitrate. */
     long getAllocatedBandwidth();
-    // Minh [get estimated bandwidth] - ADD - S
-    /** Returns the estimated bandwidth. */
-    long getEstimatedBandwidth();
-    // Minh [get estimated bandwidth] - ADD - E
   }
 
   private static final class DefaultBandwidthProvider implements BandwidthProvider {
@@ -1762,12 +1559,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
           (float) (allocatableBandwidth - previous[0]) / (next[0] - previous[0]);
       return previous[1] + (long) (fractionBetweenCheckpoints * (next[1] - previous[1]));
     }
-
-    // Minh [get estimated bandwidth] - ADD - S
-    public long getEstimatedBandwidth(){
-      return bandwidthMeter.getBitrateEstimate();
-    }
-    // Minh [get estimated bandwidth] - ADD - E
 
     /* package */ void experimentalSetBandwidthAllocationCheckpoints(
         long[][] allocationCheckpoints) {

@@ -17,7 +17,6 @@ package com.google.android.exoplayer2.analytics;
 
 import static com.google.android.exoplayer2.util.Assertions.checkNotNull;
 
-import android.util.Log;
 import android.view.Surface;
 import androidx.annotation.Nullable;
 import com.google.android.exoplayer2.C;
@@ -47,6 +46,7 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.Clock;
+import com.google.android.exoplayer2.util.Log;
 import com.google.android.exoplayer2.video.VideoListener;
 import com.google.android.exoplayer2.video.VideoRendererEventListener;
 import com.google.common.base.Objects;
@@ -486,35 +486,6 @@ public class AnalyticsCollector
     EventTime eventTime = generateCurrentPlayerMediaPeriodEventTime();
     for (AnalyticsListener listener : listeners) {
       listener.onPlayerStateChanged(eventTime, playWhenReady, playbackState);
-      // Minh - Get num of stalls - ADD - S
-//      Log.i("Minh", " playWhenReady: " + playWhenReady +
-//                  "\tplaybackState: " + playbackState);
-      if (playWhenReady && playbackState == Player.STATE_IDLE) {
-        numOfStalls = -1;
-        totalStallDuration = 0;
-        startupDuration = 0;
-        start_stall_timestampMs.clear();
-        instant_stall_duration.clear();
-      }
-      if (playWhenReady && playbackState == Player.STATE_BUFFERING){
-        numOfStalls ++;
-        start_stall_timestampMs.add(clock.elapsedRealtime());
-        previousPlaybackstate = Player.STATE_BUFFERING;
-        Log.i("Minh", " rebuffering starts");
-      }
-      else if (playWhenReady && previousPlaybackstate == Player.STATE_BUFFERING && playbackState == Player.STATE_READY) {
-        long tmp = clock.elapsedRealtime() - start_stall_timestampMs.get(start_stall_timestampMs.size()-1);
-        if (numOfStalls == 0) {  // startup phase
-          startupDuration = tmp;
-        }
-        else {                   // rebuffering event in streaming.
-          instant_stall_duration.add(tmp);
-          totalStallDuration += tmp;
-        }
-        Log.i("Minh", " rebuffering ends");
-        previousPlaybackstate = Player.STATE_READY;
-      }
-      // Minh - Get num of stalls - ADD - E
     }
   }
 
@@ -541,6 +512,34 @@ public class AnalyticsCollector
     EventTime eventTime = generateCurrentPlayerMediaPeriodEventTime();
     for (AnalyticsListener listener : listeners) {
       listener.onPlaybackStateChanged(eventTime, state);
+      Log.i("onPlaybackStateChanged", "State: " + state);
+      // Minh - Get num of stalls - ADD - S
+      if (state == Player.STATE_IDLE) {
+        numOfStalls = -1;
+        totalStallDuration = 0;
+        startupDuration = 0;
+        start_stall_timestampMs.clear();
+        instant_stall_duration.clear();
+      }
+      if (state == Player.STATE_BUFFERING){
+        numOfStalls ++;
+        start_stall_timestampMs.add(clock.elapsedRealtime());
+        previousPlaybackstate = Player.STATE_BUFFERING;
+        Log.i("Minh", " rebuffering starts");
+      }
+      else if (previousPlaybackstate == Player.STATE_BUFFERING && state == Player.STATE_READY) {
+        long tmp = clock.elapsedRealtime() - start_stall_timestampMs.get(start_stall_timestampMs.size()-1);
+        if (numOfStalls == 0) {  // startup phase
+          startupDuration = tmp;
+        }
+        else {                   // rebuffering event in streaming.
+          instant_stall_duration.add(tmp);
+          totalStallDuration += tmp;
+        }
+        Log.i("Minh", " rebuffering ends");
+        previousPlaybackstate = Player.STATE_READY;
+      }
+      // Minh - Get num of stalls - ADD - E
     }
   }
 

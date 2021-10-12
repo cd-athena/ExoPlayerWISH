@@ -54,7 +54,7 @@
       },
       {
         "name": "Test H264",
-        "uri": "http://192.168.31.157/tos1_h264/tos1_h264.mpd",
+        "uri": "http://192.168.31.123/tos1_h264/tos1_h264.mpd",
         "extension": "mpd"
       },
       {
