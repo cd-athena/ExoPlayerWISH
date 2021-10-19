@@ -27,7 +27,7 @@ If you use this source code in your research, please cite
 ```
 @inproceedings{nguyen2021wish,
   title={{WISH: User-centric Bitrate Adaptation for HTTP Adaptive Streaming on Mobile Devices}},
-  author={Nguyen, Minh and Cetinkaya, Anatoliy and Timmerer, Christian and Hellwagner, Hermann},
+  author={Nguyen, Minh and Cetinkaya, Ekrem and Hellwagner, Hermann and Timmerer, Christian },
   booktitle={Proceedings of the IEEE 23rd International Workshop on Multi-media Signal Processing (MMSP)},
   year={2021},
 }
