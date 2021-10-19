@@ -1466,9 +1466,6 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
 
   private int BOLA_ABR (long nowMS, double m_curr_buffer_S) { // BOLA_basic
     // double buffer,int Q_max,double bw_prv,double *Vmax,double *Q_D,double br_prv
-    if (SD == 0) {
-      SD = 4;
-    }
     int next_quality_idx = length-1;
     double[] Sm = new double[length]; // segment sizes
     double[] Vm = new double[length]; // utilities

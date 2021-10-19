@@ -578,7 +578,7 @@ public class PlayerActivity extends AppCompatActivity
       String basicParamDir = AdaptiveTrackSelection.segment_url +
                               "/BufMax" + AdaptiveTrackSelection.buffMax + "/" +
                               AdaptiveTrackSelection.implementedABR + "/";
-      final File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/MinhExoPlayerSR/" +
+      final File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/WISH_ABR_Algorithm/" +
                             basicParamDir + currentTime + "/");
 
       Log.i("MINH", "dir: " + dir.getPath());
