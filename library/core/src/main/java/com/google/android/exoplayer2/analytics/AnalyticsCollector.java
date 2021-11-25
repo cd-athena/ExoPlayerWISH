@@ -502,6 +502,7 @@ public class AnalyticsCollector
     totalStallDuration = 0;
     startupDuration = 0;
     start_stall_timestampMs.clear();
+    instant_stall_duration.clear();
   }
   public static List<Long> getInstantStallDuration() {return instant_stall_duration;}
   public static List<Long> getStartStallTimestampMs() {return start_stall_timestampMs;}
@@ -515,17 +516,13 @@ public class AnalyticsCollector
       Log.i("onPlaybackStateChanged", "State: " + state);
       // Minh - Get num of stalls - ADD - S
       if (state == Player.STATE_IDLE) {
-        numOfStalls = -1;
-        totalStallDuration = 0;
-        startupDuration = 0;
-        start_stall_timestampMs.clear();
-        instant_stall_duration.clear();
+        reset_statistics();
       }
       if (state == Player.STATE_BUFFERING){
         numOfStalls ++;
         start_stall_timestampMs.add(clock.elapsedRealtime());
         previousPlaybackstate = Player.STATE_BUFFERING;
-        Log.i("Minh", " rebuffering starts");
+        Log.i("Minh", " rebuffering starts. # of stalls: " + getNumOfStalls());
       }
       else if (previousPlaybackstate == Player.STATE_BUFFERING && state == Player.STATE_READY) {
         long tmp = clock.elapsedRealtime() - start_stall_timestampMs.get(start_stall_timestampMs.size()-1);

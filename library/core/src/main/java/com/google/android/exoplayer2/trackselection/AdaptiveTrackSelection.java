@@ -108,7 +108,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection {
     INIT, SLOW_START, STEADY
   }
 
-  public static final ABR implementedABR = ABR.WISH_NOSSDAV_BITMOVIN;
+  public static final ABR implementedABR = ABR.SQUAD;
   public static final QUALITY_CONFIG quality_config = QUALITY_CONFIG.BITRATE_BASED;
   private static SQUAD_PLAY_STATE play_state = SQUAD_PLAY_STATE.INIT;
 

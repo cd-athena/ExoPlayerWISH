@@ -3,48 +3,48 @@
     "name": "YouTube DASH",
     "samples": [
       {
-        "name": "ToS BEGIN == H265 == (SRABR)",
-        "uri": "http://192.168.0.104/tos_5min_begin_srabr/tos_5min_begin_srabr.mpd",
+        "name": "ToS BEGIN == (SRABR)",
+        "uri": "http://192.168.235.253/tos_begin/tos_begin.mpd",
         "extension":"mpd"
       },
       {
-        "name": "ToS END == H265 == (SRABR)",
-        "uri": "http://192.168.0.104/tos_5min_end_srabr/tos_5min_end_srabr.mpd",
+        "name": "ToS END == (SRABR)",
+        "uri": "http://192.168.235.253/tos2_h265/tos2_h265.mpd",
         "extension":"mpd"
       },
       {
-        "name": "Rally == H265 == (SRABR)",
-        "uri": "http://192.168.0.104/rally_5min_srabr/rally_5min_srbar/rally_5min_srbar.mpd",
+        "name": "Rally == (SRABR)",
+        "uri": "http://192.168.235.253/rally_h265/rally_h265.mpd",
         "extension":"mpd"
       },
       {
-        "name": "GamePlay == H265 == (SRABR)",
-        "uri": "http://192.168.0.104/gameplay_5min_srabr/gameplay_5min_srabr.mpd",
+        "name": "GamePlay == (SRABR)",
+        "uri": "http://192.168.235.253/gameplay_5min/gameplay_5min.mpd",
         "extension":"mpd"
       },
       {
         "name": "Tears of Steel Ghent (sd=4s)-4K",
-        "uri": "http://192.168.0.104/tearsofsteel_4k_hevc_4s/tearsofsteel_4k_hevc_4s.mpd",
+        "uri": "http://192.168.235.253/tearsofsteel_4k_hevc_4s/tearsofsteel_4k_hevc_4s.mpd",
         "extension":"mpd"
       },
       {
         "name": "tos_5min_begin",
-        "uri": "http://192.168.0.104/tos_5min_4s/tos_5min_4s.mpd",
+        "uri": "http://192.168.235.253/tos_begin/tos_begin.mpd",
         "extension": "mpd"
       },
       {
         "name": "tos_5min_end",
-        "uri": "http://192.168.0.104/tos_5min_end_4s/tos_5min_end_4s.mpd",
+        "uri": "http://192.168.235.253/tos2_h265/tos2_h265.mpd",
         "extension": "mpd"
       },
       {
         "name": "gamplay_MMSP",
-        "uri": "http://192.168.0.104/gameplay_5min_4s/gameplay_hevc_4s.mpd",
+        "uri": "http://192.168.235.253/gameplay_5min_4s/gameplay_hevc_4s.mpd",
         "extension": "mpd"
       },
       {
         "name": "rally",
-        "uri": "http://192.168.0.104/rally_5min_4s/rally_hevc_4s.mpd",
+        "uri": "http://192.168.235.253/rally_5min_4s/rally_hevc_4s.mpd",
         "extension": "mpd"
       },
       {

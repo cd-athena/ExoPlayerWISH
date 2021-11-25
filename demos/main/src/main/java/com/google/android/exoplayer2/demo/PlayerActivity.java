@@ -512,6 +512,7 @@ public class PlayerActivity extends AppCompatActivity
       if (playbackState == Player.STATE_ENDED) {
         //MINH [ADD a function that write log file to the SD card] - ADD - S
         writeLogFile();
+        AnalyticsCollector.reset_statistics();
         //MINH [ADD a function that write log file to the SD card] - ADD - E
         showControls();
       }
@@ -578,7 +579,7 @@ public class PlayerActivity extends AppCompatActivity
       String basicParamDir = AdaptiveTrackSelection.segment_url +
                               "/BufMax" + AdaptiveTrackSelection.buffMax + "/" +
                               AdaptiveTrackSelection.implementedABR + "/";
-      final File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/WISH_ABR_Algorithm/" +
+      final File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/WISH_SR_ABR_Algorithm/" +
                             basicParamDir + currentTime + "/");
 
       Log.i("MINH", "dir: " + dir.getPath());
